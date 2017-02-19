@@ -19,13 +19,19 @@ ANSIBLE_METADATA = {'status': ['preview'],
                     'supported_by': 'community',
                     'version': '1.0'}
 
+# TODO - Update docs for command
+# TODO - Update docs for match_filter
+# TODO - Update docs for auth parameter
+# TODO - Build password change option
+# TODO - Document password change mechanism
+
 DOCUMENTATION = '''
 ---
 module: nuage_vspk
 short_description: Manage Nuage VSP environments
 description:
-    - Manage or find Nuage VSP entities, this includes create, update, delete, assign, unassign, find one and find all, with all supported properties.
-version_added: "2.3"
+    - Manage or find Nuage VSP entities, this includes create, update, delete, assign, unassign and find, with all supported properties.
+version_added: "2.2"
 author: Philippe Dellaert (@pdellaert)
 options:
     api_username:
@@ -73,9 +79,9 @@ options:
     id:
         description:
             - The ID of the entity you want to work on.
-            - In combination with I(find), it will only return the single entity.
+            - In combination with I(command=find), it will only return the single entity.
             - In combination with I(state), it will either update or delete this entity.
-            - Will take precedence over properties whenever an entity needs to be found.
+            - Will take precedence over I(match_filter) and I(properties) whenever an entity needs to be found.
         required: false
         default: null
         choices: []
@@ -85,7 +91,7 @@ options:
         description:
             - The ID of the parent of the entity you want to work on.
             - When I(state) is specified, the entity will be gathered from this parent, if it exists, unless an I(id) is specified.
-            - When I(find) is specified, the entity will be searched for in this parent, unless an I(id) is specified.
+            - When I(command=find) is specified, the entity will be searched for in this parent, unless an I(id) is specified.
             - If specified, I(parent_type) also needs to be specified.
         required: false
         default: null
@@ -106,10 +112,10 @@ options:
     state:
         description:
             - Specifies the desired state of the entity.
-            - If I(state=present), in case the entity already exists, will update the entity if it needed.
+            - If I(state=present), in case the entity already exists, will update the entity if it is needed.
             - If I(state=present), in case the relationship with the parent is a member relationship, will assign the entity as a member of the parent, if needed.
             - If I(state=absent), in case the relationship with the parent is a member relationship, will unassign the entity as a member of the parent, if needed.
-            - Either I(state) or I(find) needs to be defined, both can not be defined at the same time.
+            - Either I(state) or I(command) needs to be defined, both can not be defined at the same time.
         required: false
         default: null
         choices:
@@ -117,37 +123,46 @@ options:
             - absent
         aliases: []
         version_added: "1.0"
-    find:
+    command:
         description:
-            - Specifies whether to return the first matching entity or all.
-            - If I(parent_id) and I(parent_type) are defined, will only search within the parent. Otherwise, if allowed, will search in the root object.
-            - If I(id) is specified, will only return the single entity matching the id.
-            - Otherwise, if I(properties) are defined, it will do an AND search using all properties.
-            - When searching for an entity, it is advised to provide the minimal required I(properties) to identify it.
-            - Either I(state) or I(find) needs to be defined, both can not be defined at the same time.
+            - Specifies a command to be executed.
+            - With I(command=find), if I(parent_id) and I(parent_type) are defined, it will only search within the parent. Otherwise, if allowed, will search in the root object.
+            - With I(command=find), if I(id) is specified, it will only return the single entity matching the id.
+            - With I(command=find), otherwise, if I(match_filter) is define, it will use that filter to search.
+            - With I(command=find), otherwise, if I(properties) are defined, it will do an AND search using all properties.
+            - With I(command=change_password), a password of a user can be changed. Warning - In case the password is the same as the existing, it will throw an error.
+            - Either I(state) or I(command) needs to be defined, both can not be defined at the same time.
         required: false
         default: null
         choices:
-            - one
-            - all
+            - find
+            - change_password
+        aliases: []
+        version_added: "1.0"
+    match_filter:
+        description:
+            - A filter used when looking (both in I(command) and I(state) for entities, in the format the Nuage VSP API expects.
+            - If I(match_filter) is defined, it will take precedence over the I(properties), but not on the I(id)
+        required: false
+        default: null
+        choices: []
         aliases: []
         version_added: "1.0"
     properties:
         description:
             - Properties are the key, value pairs of the different properties an entity has.
-            - If no I(id) is specified, these are used to find or determine if the entity exists.
+            - If no I(id) and no I(match_filter) is specified, these are used to find or determine if the entity exists.
         required: false
         default: null
         choices: []
         aliases: []
         version_added: "1.0"
 notes:
-    - Check mode is supported, but with some caveats.
-    - It will not do any changes, and if possible try to determine if it is able do what is requested.
-    - In case a parent id is provided from a previous task, it might be empty and if a search is possible on root, it will do so, which can impact performance.
+    - Check mode is supported, but with some caveats. It will not do any changes, and if possible try to determine if it is able do what is requested. In case a parent id is provided from a previous task, it might be empty and if a search is possible on root, it will do so, which can impact performance.
 requirements:
     - Supports Nuage VSP 4.0Rx
     - Proper VSPK-Python installed for your Nuage version
+    - Tested with VSP 4.0R7 and VSPK-Python 4.0.7
 '''
 
 EXAMPLES = '''
@@ -164,62 +179,76 @@ EXAMPLES = '''
 - name: Create Enterprise
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: Enterprise
     state: present
     properties:
       name: "{{ enterprise_name }}"
   register: nuage_enterprise
 
+# Checking if an Enterprise with the new name already exists
+- name: Check if an Enterprise exists with the new name
+  connection: local
+  nuage_vspk:
+    auth: "{{ nuage_auth }}"
+    type: Enterprise
+    command: find
+    properties:
+      name: "{{ enterprise_new_name }}"
+  ignore_errors: yes
+  register: nuage_check_enterprise
+
 # Updating an enterprise's name
 - name: Update Enterprise name
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: Enterprise
     id: "{{ nuage_enterprise.id }}"
     state: present
     properties:
       name: "{{ enterprise_new_name }}"
+  when: nuage_check_enterprise | failed
 
 # Creating a User in an Enterprise
 - name: Create admin user
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: User
     parent_id: "{{ nuage_enterprise.id }}"
     parent_type: Enterprise
     state: present
+    match_filter: "userName == 'ansible-admin'"
     properties:
-      email: "ansible@localhost"
+      email: "ansible@localhost.local"
       first_name: "Ansible"
       last_name: "Admin"
-      password: "ansible"
+      password: "ansible-password"
       user_name: "ansible-admin"
   register: nuage_user
+
+# Updating password for User
+- name: Update admin password
+  connection: local
+  nuage_vspk:
+    auth: "{{ nuage_auth }}"
+    type: User
+    id: "{{ nuage_user.id }}"
+    command: change_password
+    properties:
+      password: "ansible-new-password"
+  ignore_errors: yes
 
 # Finding a group in an enterprise
 - name: Find Administrators group in Enterprise
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: Group
     parent_id: "{{ nuage_enterprise.id }}"
     parent_type: Enterprise
-    find: one
+    command: find
     properties:
       name: "Administrators"
   register: nuage_group
@@ -228,10 +257,7 @@ EXAMPLES = '''
 - name: Assign admin user to administrators
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: User
     id: "{{ nuage_user.id }}"
     parent_id: "{{ nuage_group.id }}"
@@ -239,13 +265,10 @@ EXAMPLES = '''
     state: present
 
 # Creating multiple DomainTemplates
-- name: Create DomainTemplate
+- name: Create multiple DomainTemplates
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: DomainTemplate
     parent_id: "{{ nuage_enterprise.id }}"
     parent_type: Enterprise
@@ -261,24 +284,18 @@ EXAMPLES = '''
 - name: Fetching all DomainTemplates
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: DomainTemplate
     parent_id: "{{ nuage_enterprise.id }}"
     parent_type: Enterprise
-    find: all
+    command: find
   register: nuage_domain_templates
 
 # Deleting all DomainTemplates
 - name: Deleting all found DomainTemplates
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: DomainTemplate
     state: absent
     id: "{{ item.ID }}"
@@ -289,10 +306,7 @@ EXAMPLES = '''
 - name: Unassign admin user to administrators
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: User
     id: "{{ nuage_user.id }}"
     parent_id: "{{ nuage_group.id }}"
@@ -303,10 +317,7 @@ EXAMPLES = '''
 - name: Delete Enterprise
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: Enterprise
     id: "{{ nuage_enterprise.id }}"
     state: absent
@@ -350,6 +361,7 @@ try:
 except ImportError:
     HASVSPK = False
 
+SUPPORTED_COMMANDS = ['find', 'change_password']
 
 class NuageEntityManager(object):
     """
@@ -358,19 +370,24 @@ class NuageEntityManager(object):
 
     def __init__(self, module):
         self.module = module
-        self.api_username = module.params['api_username']
-        self.api_password = module.params['api_password']
-        self.api_enterprise = module.params['api_enterprise']
-        self.api_url = module.params['api_url']
+        self.auth = module.params['auth']
+        self.api_username = None
+        self.api_password = None
+        self.api_enterprise = None
+        self.api_url = None
         self.type = module.params['type']
 
         self.state = None
         if 'state' in module.params.keys():
             self.state = module.params['state']
 
-        self.find = None
-        if 'find' in module.params.keys():
-            self.find = module.params['find']
+        self.command = None
+        if 'command' in module.params.keys():
+            self.command = module.params['command']
+
+        self.match_filter = None
+        if 'match_filter' in module.params.keys():
+            self.match_filter = module.params['match_filter']
 
         self.id = None
         if 'id' in module.params.keys():
@@ -422,6 +439,20 @@ class NuageEntityManager(object):
         """
         Verifies the parameter input for types and parent correctness and necessary parameters
         """
+        # Checking auth parameters
+        if 'api_username' not in self.auth.keys() or not self.auth['api_username']:
+            self.module.fail_json(msg='Missing api_username parameter in auth')
+        if 'api_password' not in self.auth.keys() or not self.auth['api_password']:
+            self.module.fail_json(msg='Missing api_password parameter in auth')
+        if 'api_enterprise' not in self.auth.keys() or not self.auth['api_enterprise']:
+            self.module.fail_json(msg='Missing api_enterprise parameter in auth')
+        if 'api_url' not in self.auth.keys() or not self.auth['api_url']:
+            self.module.fail_json(msg='Missing api_url parameter in auth')
+        self.api_username = self.auth['api_username']
+        self.api_password = self.auth['api_password']
+        self.api_enterprise = self.auth['api_enterprise']
+        self.api_url = self.auth['api_url']
+
         # Checking if type exists
         try:
             self.entity_class = getattr(vsdk, 'NU{0:s}'.format(self.type))
@@ -458,13 +489,15 @@ class NuageEntityManager(object):
             if fetcher is None:
                 self.module.fail_json(msg='No parent specified and root object is not a parent for the type')
 
-        # Verifying state or find is set:
-        if not self.find and not self.state:
-            self.module.fail_json(msg='You have to define either a state or a find statement')
-
-        # Verifying state and properties if required
-        if not self.id and not self.properties and self.find not in ['one', 'all']:
-            self.module.fail_json(msg='Unable to execute without an id or some properties')
+        # Verifying state or command is set:
+        if not self.command and not self.state:
+            self.module.fail_json(msg='You have to define either a state or a command')
+        elif self.state and self.state == 'present' and not self.id and not self.properties:
+            self.module.fail_json(msg='In case of present state, an id and/or properties has to be defined')
+        elif self.state and self.state == 'absent' and not self.id and not self.properties and not self.match_filter:
+            self.module.fail_json(msg='In case of absent state, an id, properties and/or a match_filter has to be defined')
+        elif self.command and self.command == 'change_password' and (not self.id or not self.properties or not self.properties['password']):
+            self.module.fail_json(msg='In case of change_password command, an id and a properties password have to be defined')
 
     def handle_parent(self):
         """
@@ -500,12 +533,16 @@ class NuageEntityManager(object):
 
             return [found_entity]
 
+        elif self.match_filter:
+            search_filter = self.match_filter
         elif self.properties:
             # Building filter
             for num, property_name in enumerate(self.properties):
                 if num > 0:
                     search_filter += ' and '
                 search_filter += '{0:s} == "{1}"'.format(property_name, self.properties[property_name])
+
+        self.module.params['filter_test'] = search_filter
 
         if self.entity_fetcher is not None:
             try:
@@ -529,6 +566,8 @@ class NuageEntityManager(object):
 
             return found_entity
 
+        elif self.match_filter:
+            search_filter = self.match_filter
         elif self.properties:
             # Building filter
             for num, property_name in enumerate(self.properties):
@@ -544,24 +583,35 @@ class NuageEntityManager(object):
         return None
 
     def handle_entity(self):
-        if self.find and self.find == 'one':
-            # Find state
-            self.entity = self.find_first()
-            self.result['changed'] = False
-            if self.entity:
-                self.result['id'] = self.entity.id
-                self.result['entities'] = [self.entity.to_dict()]
-            elif not self.module.check_mode:
-                self.module.fail_json(msg='Unable to find a matching entity')
-        elif self.find and self.find == 'all':
-            # Find All state
+        if self.command and self.command == 'find':
+            # Command find
             entities = self.find_all()
             self.result['changed'] = False
             if entities:
+                if len(entities) == 1:
+                    self.result['id'] = entities[0].id
                 for entity in entities:
                     self.result['entities'].append(entity.to_dict())
             elif not self.module.check_mode:
                 self.module.fail_json(msg='Unable to find matching entries')
+        elif self.command and self.command == 'change_password':
+            # Command change_password
+            self.entity = self.find_first()
+            if not self.entity:
+                self.module.fail_json(msg='Unable to find entity')
+
+            try:
+                getattr(self.entity, 'password')
+            except AttributeError:
+                self.module.fail_json(msg='Entity does not have a password property')
+
+            try:
+                setattr(self.entity, 'password', self.properties['password'])
+            except AttributeError:
+                self.module.fail_json(msg='Password can not be changed for entity')
+
+            self.save_entity()
+
         elif self.state == 'present':
             # Present state
             self.entity = self.find_first()
@@ -589,6 +639,8 @@ class NuageEntityManager(object):
                 changed = False
                 if self.properties:
                     for property_name in self.properties.keys():
+                        if property_name == 'password':
+                            continue
                         entity_value = ''
                         try:
                             entity_value = getattr(self.entity, property_name)
@@ -719,17 +771,15 @@ from ansible.module_utils.basic import AnsibleModule
 def main():
     module = AnsibleModule(
         argument_spec=dict(
-            api_username=dict(required=True, type='str', no_log=True),
-            api_password=dict(required=True, type='str', no_log=True),
-            api_enterprise=dict(required=True, type='str', no_log=True),
-            api_url=dict(required=True, type='str'),
+            auth=dict(required=True, type='dict', no_log=True),
             type=dict(required=True, type='str'),
-            id=dict(required=False, type='str'),
-            parent_id=dict(required=False, type='str'),
-            parent_type=dict(required=False, type='str'),
-            state=dict(choices=['present', 'absent'], type='str'),
-            find=dict(choices=['one', 'all'], type='str'),
-            properties=dict(required=False, type='dict')
+            id=dict(default=None, required=False, type='str'),
+            parent_id=dict(default=None, required=False, type='str'),
+            parent_type=dict(default=None, required=False, type='str'),
+            state=dict(default=None, choices=['present', 'absent'], type='str'),
+            command=dict(default=None, choices=SUPPORTED_COMMANDS, type='str'),
+            match_filter=dict(default=None, required=False, type='str'),
+            properties=dict(default=None, required=False, type='dict')
         ),
         supports_check_mode=True
     )

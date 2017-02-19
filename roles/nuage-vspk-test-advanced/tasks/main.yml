@@ -36,6 +36,8 @@
 #                                                                             #
 # All descriptions are set to 'Created by Ansible' by this playbook, to       #
 # indicate the use of Ansible (you can change them below, of course)          #
+#                                                                             #
+# This role is idempotent on itself                                           #
 ###############################################################################
 
 
@@ -44,10 +46,7 @@
 - name: Create Enterprise
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: Enterprise
     state: present
     properties:
@@ -64,12 +63,9 @@
 - name: Finding Enterprise
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: Enterprise
-    find: one
+    command: find
     properties:
       name: "{{ enterprise_name }}"
   register: nuage_enterprise
@@ -77,14 +73,12 @@
 - name: Create admin user
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: User
     parent_id: "{{ nuage_enterprise.id }}"
     parent_type: Enterprise
     state: present
+    match_filter: "userName == '{{ enterprise_admin_username }}'"
     properties:
       email: "{{ enterprise_admin_email }}"
       first_name: "{{ enterprise_admin_first_name }}"
@@ -93,17 +87,28 @@
       user_name: "{{ enterprise_admin_username }}"
   register: nuage_user
 
+# Updating password for User
+# Best to ignore errors in this case, because Nuage API does not allow
+# a password update in case the existing password is provided
+- name: Update admin password
+  connection: local
+  nuage_vspk:
+    auth: "{{ nuage_auth }}"
+    type: User
+    id: "{{ nuage_user.id }}"
+    command: change_password
+    properties:
+      password: "{{ enterprise_admin_new_password }}"
+  ignore_errors: yes
+
 - name: Find Administrators group in Enterprise
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: Group
     parent_id: "{{ nuage_enterprise.id }}"
     parent_type: Enterprise
-    find: one
+    command: find
     properties:
       name: "Administrators"
   register: nuage_group
@@ -114,10 +119,7 @@
 - name: Assign admin user to administrators
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: User
     id: "{{ nuage_user.id }}"
     parent_id: "{{ nuage_group.id }}"
@@ -127,10 +129,7 @@
 - name: Create DomainTemplate
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: DomainTemplate
     parent_id: "{{ nuage_enterprise.id }}"
     parent_type: Enterprise
@@ -143,10 +142,7 @@
 - name: Create the Web Zone
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: ZoneTemplate
     parent_id: "{{ nuage_dom_temp.id }}"
     parent_type: DomainTemplate
@@ -159,10 +155,7 @@
 - name: Create the DB Zone
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: ZoneTemplate
     parent_id: "{{ nuage_dom_temp.id }}"
     parent_type: DomainTemplate
@@ -175,10 +168,7 @@
 - name: Create the FW Zone
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: ZoneTemplate
     parent_id: "{{ nuage_dom_temp.id }}"
     parent_type: DomainTemplate
@@ -191,10 +181,7 @@
 - name: Create the Web Subnet
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: SubnetTemplate
     parent_id: "{{ nuage_web_zone.id }}"
     parent_type: ZoneTemplate
@@ -210,10 +197,7 @@
 - name: Create the DB Subnet
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: SubnetTemplate
     parent_id: "{{ nuage_db_zone.id }}"
     parent_type: ZoneTemplate
@@ -229,10 +213,7 @@
 - name: Create the FW Subnet
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: SubnetTemplate
     parent_id: "{{ nuage_fw_zone.id }}"
     parent_type: ZoneTemplate
@@ -248,14 +229,12 @@
 - name: Create FW redirection target
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: RedirectionTargetTemplate
     parent_id: "{{ nuage_dom_temp.id }}"
     parent_type: DomainTemplate
     state: present
+    match_filter: "name == 'FW'"
     properties:
       name: "FW"
       description: "Created by Ansible"
@@ -265,10 +244,7 @@
 - name: Put the domain template in policy edit mode
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: Job
     parent_id: "{{ nuage_dom_temp.id }}"
     parent_type: DomainTemplate
@@ -284,14 +260,12 @@
 - name: Create top allow all egress policy
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: EgressACLTemplate
     parent_id: "{{ nuage_dom_temp.id }}"
     parent_type: DomainTemplate
     state: present
+    match_filter: "name == 'Allow All' and policyState == 'DRAFT'"
     properties:
       name: "Allow All"
       active: true
@@ -305,14 +279,12 @@
 - name: Create top ingress policy
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: IngressACLTemplate
     parent_id: "{{ nuage_dom_temp.id }}"
     parent_type: DomainTemplate
     state: present
+    match_filter: "name == 'TOP-Ingress-Policy' and policyState == 'DRAFT'"
     properties:
       name: "TOP-Ingress-Policy"
       active: true
@@ -323,14 +295,12 @@
 - name: Create bottom ingress policy
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: IngressACLTemplate
     parent_id: "{{ nuage_dom_temp.id }}"
     parent_type: DomainTemplate
     state: present
+    match_filter: "name == 'BOTTOM-Ingress-Policy' and policyState == 'DRAFT'"
     properties:
       name: "BOTTOM-Ingress-Policy"
       active: true
@@ -341,14 +311,12 @@
 - name: Create forward policy
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: IngressAdvFwdTemplate
     parent_id: "{{ nuage_dom_temp.id }}"
     parent_type: DomainTemplate
     state: present
+    match_filter: "name == 'Redirect-Policy' and policyState == 'DRAFT'"
     properties:
       name: "Redirect-Policy"
       active: true
@@ -359,14 +327,12 @@
 - name: Create an allow all ICMP top rule
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: IngressACLEntryTemplate
     parent_id: "{{ nuage_top_ingress_policy.id }}"
     parent_type: IngressACLTemplate
     state: present
+    match_filter: "description == 'Allow all ICMP'"
     properties:
       action: "FORWARD"
       description: "Allow all ICMP"
@@ -379,14 +345,12 @@
 - name: Create a block all bottom rule
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: IngressACLEntryTemplate
     parent_id: "{{ nuage_bottom_ingress_policy.id }}"
     parent_type: IngressACLTemplate
     state: present
+    match_filter: "description == 'Blocks all traffic'"
     properties:
       action: "DROP"
       description: "Blocks all traffic"
@@ -399,14 +363,12 @@
 - name: Create a forward rulee
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: IngressAdvFwdEntryTemplate
     parent_id: "{{ nuage_redirect_policy.id }}"
     parent_type: IngressAdvFwdTemplate
     state: present
+    match_filter: "description == 'Redirect DB traffic to FW'"
     properties:
       action: "REDIRECT"
       description: "Redirect DB traffic to FW"
@@ -423,10 +385,7 @@
 - name: Commit policy changes
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: Job
     parent_id: "{{ nuage_dom_temp.id }}"
     parent_type: DomainTemplate
@@ -443,14 +402,12 @@
 - name: Creating a few Domains from the DomainTemplate
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: Domain
     parent_id: "{{ nuage_enterprise.id }}"
     parent_type: Enterprise
     state: present
+    match_filter: "name == '{{ item }}'"
     properties:
       name: "{{ item }}"
       description: "Created by Ansible"
@@ -482,14 +439,11 @@
 - name: Fetching all Domains
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: Domain
     parent_id: "{{ nuage_enterprise.id }}"
     parent_type: Enterprise
-    find: all
+    command: find
   register: nuage_domains
 
 # State absent will delete an entity if it exists. Easiest way is to do it 
@@ -497,10 +451,7 @@
 - name: Deleting all found Domains
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: Domain
     state: absent
     id: "{{ item.ID}}"
@@ -513,10 +464,7 @@
 - name: Delete the DomainTemplate
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: DomainTemplate
     parent_id: "{{ nuage_enterprise.id }}"
     parent_type: Enterprise
@@ -529,10 +477,7 @@
 - name: Unassign admin user to administrators
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: User
     id: "{{ nuage_user.id }}"
     parent_id: "{{ nuage_group.id }}"
@@ -542,10 +487,7 @@
 - name: Delete admin user
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: User
     id: "{{ nuage_user.id }}"
     state: absent
@@ -553,10 +495,7 @@
 - name: Delete Enterprise
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: Enterprise
     id: "{{ nuage_enterprise.id }}"
     state: absent

@@ -2,62 +2,78 @@
 - name: Create Enterprise
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: Enterprise
     state: present
     properties:
       name: "{{ enterprise_name }}"
   register: nuage_enterprise
 
+# Checking if an Enterprise with the new name already exists
+- name: Check if an Enterprise exists with the new name
+  connection: local
+  nuage_vspk:
+    auth: "{{ nuage_auth }}"
+    type: Enterprise
+    command: find
+    properties:
+      name: "{{ enterprise_new_name }}"
+  ignore_errors: yes
+  register: nuage_check_enterprise
+
 # Updating an enterprise's name
 - name: Update Enterprise name
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: Enterprise
     id: "{{ nuage_enterprise.id }}"
     state: present
     properties:
       name: "{{ enterprise_new_name }}"
+  when: nuage_check_enterprise | failed
 
 # Creating a User in an Enterprise
 - name: Create admin user
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: User
     parent_id: "{{ nuage_enterprise.id }}"
     parent_type: Enterprise
     state: present
+    match_filter: "userName == 'ansible-admin'"
     properties:
-      email: "ansible@localhost"
+      email: "ansible@localhost.local"
       first_name: "Ansible"
       last_name: "Admin"
-      password: "ansible"
+      password: "ansible-password"
       user_name: "ansible-admin"
   register: nuage_user
+
+# Updating password for User
+# Best to ignore errors in this case, because Nuage API does not allow
+# a password update in case the existing password is provided
+- name: Update admin password
+  connection: local
+  nuage_vspk:
+    auth: "{{ nuage_auth }}"
+    type: User
+    id: "{{ nuage_user.id }}"
+    command: change_password
+    properties:
+      password: "ansible-new-password"
+  ignore_errors: yes
 
 # Finding a group in an enterprise
 - name: Find Administrators group in Enterprise
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: Group
     parent_id: "{{ nuage_enterprise.id }}"
     parent_type: Enterprise
-    find: one
+    command: find
     properties:
       name: "Administrators"
   register: nuage_group
@@ -66,10 +82,7 @@
 - name: Assign admin user to administrators
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: User
     id: "{{ nuage_user.id }}"
     parent_id: "{{ nuage_group.id }}"
@@ -80,10 +93,7 @@
 - name: Create multiple DomainTemplates
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: DomainTemplate
     parent_id: "{{ nuage_enterprise.id }}"
     parent_type: Enterprise
@@ -99,24 +109,18 @@
 - name: Fetching all DomainTemplates
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: DomainTemplate
     parent_id: "{{ nuage_enterprise.id }}"
     parent_type: Enterprise
-    find: all
+    command: find
   register: nuage_domain_templates
 
 # Deleting all DomainTemplates
 - name: Deleting all found DomainTemplates
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: DomainTemplate
     state: absent
     id: "{{ item.ID }}"
@@ -127,10 +131,7 @@
 - name: Unassign admin user to administrators
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: User
     id: "{{ nuage_user.id }}"
     parent_id: "{{ nuage_group.id }}"
@@ -141,10 +142,7 @@
 - name: Delete Enterprise
   connection: local
   nuage_vspk:
-    api_username: "{{ nuage_api_username }}"
-    api_password: "{{ nuage_api_password }}"
-    api_enterprise: "{{ nuage_api_enterprise }}"
-    api_url: "{{ nuage_api_url }}"
+    auth: "{{ nuage_auth }}"
     type: Enterprise
     id: "{{ nuage_enterprise.id }}"
     state: absent

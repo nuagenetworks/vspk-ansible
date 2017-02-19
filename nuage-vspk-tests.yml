@@ -1,16 +1,25 @@
 - hosts: localhost
+#
+# Uncomment the one you want to test
+#
   roles:
     - nuage-vspk-test-basic
-    - nuage-vspk-test-advanced
+#    - nuage-vspk-test-advanced
+
+#
+# Configure to match your environment (nuage_auth, rest can be left)
+#
   vars:
-    nuage_api_username: csproot
-    nuage_api_password: csproot
-    nuage_api_enterprise: csp
-    nuage_api_url: https://localhost:8443
+    nuage_auth:
+      api_username: csproot
+      api_password: csproot
+      api_enterprise: csp
+      api_url: https://localhost:8443
     enterprise_name: Ansible-Test
     enterprise_new_name: Ansible-Updated-Test
     enterprise_admin_username: ansible-admin
     enterprise_admin_password: ansible
+    enterprise_admin_new_password: ansible_new
     enterprise_admin_first_name: Ansible
     enterprise_admin_last_name: Admin
     enterprise_admin_email: ansible@localhost.local
