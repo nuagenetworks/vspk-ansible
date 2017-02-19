@@ -1,0 +1,150 @@
+# Creating a new enterprise
+- name: Create Enterprise
+  connection: local
+  nuage_vspk:
+    api_username: "{{ nuage_api_username }}"
+    api_password: "{{ nuage_api_password }}"
+    api_enterprise: "{{ nuage_api_enterprise }}"
+    api_url: "{{ nuage_api_url }}"
+    type: Enterprise
+    state: present
+    properties:
+      name: "{{ enterprise_name }}"
+  register: nuage_enterprise
+
+# Updating an enterprise's name
+- name: Update Enterprise name
+  connection: local
+  nuage_vspk:
+    api_username: "{{ nuage_api_username }}"
+    api_password: "{{ nuage_api_password }}"
+    api_enterprise: "{{ nuage_api_enterprise }}"
+    api_url: "{{ nuage_api_url }}"
+    type: Enterprise
+    id: "{{ nuage_enterprise.id }}"
+    state: present
+    properties:
+      name: "{{ enterprise_new_name }}"
+
+# Creating a User in an Enterprise
+- name: Create admin user
+  connection: local
+  nuage_vspk:
+    api_username: "{{ nuage_api_username }}"
+    api_password: "{{ nuage_api_password }}"
+    api_enterprise: "{{ nuage_api_enterprise }}"
+    api_url: "{{ nuage_api_url }}"
+    type: User
+    parent_id: "{{ nuage_enterprise.id }}"
+    parent_type: Enterprise
+    state: present
+    properties:
+      email: "ansible@localhost"
+      first_name: "Ansible"
+      last_name: "Admin"
+      password: "ansible"
+      user_name: "ansible-admin"
+  register: nuage_user
+
+# Finding a group in an enterprise
+- name: Find Administrators group in Enterprise
+  connection: local
+  nuage_vspk:
+    api_username: "{{ nuage_api_username }}"
+    api_password: "{{ nuage_api_password }}"
+    api_enterprise: "{{ nuage_api_enterprise }}"
+    api_url: "{{ nuage_api_url }}"
+    type: Group
+    parent_id: "{{ nuage_enterprise.id }}"
+    parent_type: Enterprise
+    find: one
+    properties:
+      name: "Administrators"
+  register: nuage_group
+
+# Assign the user to the group
+- name: Assign admin user to administrators
+  connection: local
+  nuage_vspk:
+    api_username: "{{ nuage_api_username }}"
+    api_password: "{{ nuage_api_password }}"
+    api_enterprise: "{{ nuage_api_enterprise }}"
+    api_url: "{{ nuage_api_url }}"
+    type: User
+    id: "{{ nuage_user.id }}"
+    parent_id: "{{ nuage_group.id }}"
+    parent_type: Group
+    state: present
+
+# Creating multiple DomainTemplates
+- name: Create multiple DomainTemplates
+  connection: local
+  nuage_vspk:
+    api_username: "{{ nuage_api_username }}"
+    api_password: "{{ nuage_api_password }}"
+    api_enterprise: "{{ nuage_api_enterprise }}"
+    api_url: "{{ nuage_api_url }}"
+    type: DomainTemplate
+    parent_id: "{{ nuage_enterprise.id }}"
+    parent_type: Enterprise
+    state: present
+    properties:
+      name: "{{ item }}"
+      description: "Created by Ansible"
+  with_items:
+    - "Template-1"
+    - "Template-2"
+
+# Finding all DomainTemplates
+- name: Fetching all DomainTemplates
+  connection: local
+  nuage_vspk:
+    api_username: "{{ nuage_api_username }}"
+    api_password: "{{ nuage_api_password }}"
+    api_enterprise: "{{ nuage_api_enterprise }}"
+    api_url: "{{ nuage_api_url }}"
+    type: DomainTemplate
+    parent_id: "{{ nuage_enterprise.id }}"
+    parent_type: Enterprise
+    find: all
+  register: nuage_domain_templates
+
+# Deleting all DomainTemplates
+- name: Deleting all found DomainTemplates
+  connection: local
+  nuage_vspk:
+    api_username: "{{ nuage_api_username }}"
+    api_password: "{{ nuage_api_password }}"
+    api_enterprise: "{{ nuage_api_enterprise }}"
+    api_url: "{{ nuage_api_url }}"
+    type: DomainTemplate
+    state: absent
+    id: "{{ item.ID }}"
+  with_items: "{{ nuage_domain_templates.entities }}"
+  when: nuage_domain_templates.entities is defined
+
+# Unassign user from group
+- name: Unassign admin user to administrators
+  connection: local
+  nuage_vspk:
+    api_username: "{{ nuage_api_username }}"
+    api_password: "{{ nuage_api_password }}"
+    api_enterprise: "{{ nuage_api_enterprise }}"
+    api_url: "{{ nuage_api_url }}"
+    type: User
+    id: "{{ nuage_user.id }}"
+    parent_id: "{{ nuage_group.id }}"
+    parent_type: Group
+    state: absent
+
+# Deleting an enterprise
+- name: Delete Enterprise
+  connection: local
+  nuage_vspk:
+    api_username: "{{ nuage_api_username }}"
+    api_password: "{{ nuage_api_password }}"
+    api_enterprise: "{{ nuage_api_enterprise }}"
+    api_url: "{{ nuage_api_url }}"
+    type: Enterprise
+    id: "{{ nuage_enterprise.id }}"
+    state: absent

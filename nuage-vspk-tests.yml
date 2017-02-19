@@ -1,0 +1,16 @@
+- hosts: localhost
+  roles:
+    - nuage-vspk-test-basic
+    - nuage-vspk-test-advanced
+  vars:
+    nuage_api_username: csproot
+    nuage_api_password: csproot
+    nuage_api_enterprise: csp
+    nuage_api_url: https://localhost:8443
+    enterprise_name: Ansible-Test
+    enterprise_new_name: Ansible-Updated-Test
+    enterprise_admin_username: ansible-admin
+    enterprise_admin_password: ansible
+    enterprise_admin_first_name: Ansible
+    enterprise_admin_last_name: Admin
+    enterprise_admin_email: ansible@localhost.local
