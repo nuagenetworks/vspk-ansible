@@ -1,13 +1,10 @@
 - hosts: localhost
-#
-# Uncomment the one you want to test
-#
   roles:
     - nuage-vspk-test-basic
-#    - nuage-vspk-test-advanced
+    - nuage-vspk-test-advanced
 
 #
-# Configure to match your environment (nuage_auth, rest can be left)
+# Configure to match your environment
 #
   vars:
     nuage_auth:

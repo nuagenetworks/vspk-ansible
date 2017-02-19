@@ -6,7 +6,7 @@
     type: Enterprise
     state: present
     properties:
-      name: "{{ enterprise_name }}"
+      name: "{{ enterprise_name }}-basic"
   register: nuage_enterprise
 
 # Checking if an Enterprise with the new name already exists
@@ -17,7 +17,7 @@
     type: Enterprise
     command: find
     properties:
-      name: "{{ enterprise_new_name }}"
+      name: "{{ enterprise_new_name }}-basic"
   ignore_errors: yes
   register: nuage_check_enterprise
 
@@ -30,7 +30,7 @@
     id: "{{ nuage_enterprise.id }}"
     state: present
     properties:
-      name: "{{ enterprise_new_name }}"
+      name: "{{ enterprise_new_name }}-basic"
   when: nuage_check_enterprise | failed
 
 # Creating a User in an Enterprise

@@ -183,7 +183,7 @@ EXAMPLES = '''
     type: Enterprise
     state: present
     properties:
-      name: "{{ enterprise_name }}"
+      name: "{{ enterprise_name }}-basic"
   register: nuage_enterprise
 
 # Checking if an Enterprise with the new name already exists
@@ -194,7 +194,7 @@ EXAMPLES = '''
     type: Enterprise
     command: find
     properties:
-      name: "{{ enterprise_new_name }}"
+      name: "{{ enterprise_new_name }}-basic"
   ignore_errors: yes
   register: nuage_check_enterprise
 
@@ -207,7 +207,7 @@ EXAMPLES = '''
     id: "{{ nuage_enterprise.id }}"
     state: present
     properties:
-      name: "{{ enterprise_new_name }}"
+      name: "{{ enterprise_new_name }}-basic"
   when: nuage_check_enterprise | failed
 
 # Creating a User in an Enterprise
@@ -326,7 +326,7 @@ EXAMPLES = '''
 RETURN = '''
 id:
     description: The id of the entity that was found, created, updated or assigned.
-    returned: On state=present and find=one in case an entity was found.
+    returned: On state=present and command=find in case one entity was found.
     type: string
     sample: bae07d8d-d29c-4e2b-b6ba-621b4807a333
 entities:
