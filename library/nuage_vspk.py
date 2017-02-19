@@ -34,33 +34,13 @@ description:
 version_added: "2.2"
 author: Philippe Dellaert (@pdellaert)
 options:
-    api_username:
+    auth:
         description:
-            - The username to connect to the Nuage VSP environment (example csproot).
-        required: true
-        default: null
-        choices: []
-        aliases: []
-        version_added: "1.0"
-    api_password:
-        description:
-            - The password to connect to the Nuage VSP environment (example csproot).
-        required: true
-        default: null
-        choices: []
-        aliases: []
-        version_added: "1.0"
-    api_enterprise:
-        description:
-            - The enterprise to connect to the Nuage VSP environment (example csp).
-        required: true
-        default: null
-        choices: []
-        aliases: []
-        version_added: "1.0"
-    api_url:
-        description:
-            - The URL to connect to the Nuage VSP environment (example https://10.0.0.1:8443).
+            - Dict with the authentication information required to connect to a Nuage VSP environment.
+            - Requires a I(api_username) parameter (example csproot).
+            - Requires a I(api_password) parameter (example csproot).
+            - Requires a I(api_enterprise) parameter (example csp).
+            - Requires a I(api_url) parameter (example https://10.0.0.10:8443).
         required: true
         default: null
         choices: []
@@ -168,10 +148,11 @@ requirements:
 EXAMPLES = '''
 # This can be executed as a single role, with the following vars
 # vars:
-#   nuage_api_username: csproot
-#   nuage_api_password: csproot
-#   nuage_api_enterprise: csp
-#   nuage_api_url: https://10.0.0.254:8443
+#   auth:
+#     api_username: csproot
+#     api_password: csproot
+#     api_enterprise: csp
+#     api_url: https://10.0.0.10:8443
 #   enterprise_name: Ansible-Enterprise
 #   enterprise_new_name: Ansible-Updated-Enterprise
 
