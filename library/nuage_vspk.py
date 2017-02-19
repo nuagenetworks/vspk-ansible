@@ -25,7 +25,7 @@ module: nuage_vspk
 short_description: Manage Nuage VSP environments
 description:
     - Manage or find Nuage VSP entities, this includes create, update, delete, assign, unassign, find one and find all, with all supported properties.
-version_added: "2.2"
+version_added: "2.3"
 author: Philippe Dellaert (@pdellaert)
 options:
     api_username:
@@ -314,13 +314,13 @@ EXAMPLES = '''
 
 RETURN = '''
 id:
-    description: The id of the entity that was found, created, updated or assigned
-    returned: I(state=present) and I(find=one) in case an entity was found
+    description: The id of the entity that was found, created, updated or assigned.
+    returned: On state=present and find=one in case an entity was found.
     type: string
     sample: bae07d8d-d29c-4e2b-b6ba-621b4807a333
 entities:
     description: A list of entities handled. Each element is the to_dict() of the entity.
-    returned: I(state=present) and I(find), with only one element in case of I(state=present) or I(find=one)
+    returned: On state=present and find, with only one element in case of state=present or find=one.
     type: list
     sample: [{
         "ID": acabc435-3946-4117-a719-b8895a335830",
