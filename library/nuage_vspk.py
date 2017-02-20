@@ -19,12 +19,6 @@ ANSIBLE_METADATA = {'status': ['preview'],
                     'supported_by': 'community',
                     'version': '1.0'}
 
-# TODO - Update docs for command
-# TODO - Update docs for match_filter
-# TODO - Update docs for auth parameter
-# TODO - Build password change option
-# TODO - Document password change mechanism
-
 DOCUMENTATION = '''
 ---
 module: nuage_vspk
@@ -143,6 +137,7 @@ requirements:
     - Supports Nuage VSP 4.0Rx
     - Proper VSPK-Python installed for your Nuage version
     - Tested with VSP 4.0R7 and VSPK-Python 4.0.7
+    - Tested with NuageX U(https://nuagex.io), with VSP 4.0R5 and VSPK-Python 4.0.5
 '''
 
 EXAMPLES = '''
