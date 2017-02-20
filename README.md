@@ -1,4 +1,4 @@
-# nuage-vspk-ansible
+# VSPK-Ansible
 
 ## Overview
 The nuage_vspk module for Ansible allows you to manage or find Nuage VSP entities, including:
@@ -11,7 +11,7 @@ The nuage_vspk module for Ansible allows you to manage or find Nuage VSP entitie
 * Search for an entity
 * Change passwords on users (can not be done through regular update)
 
-More details on the [Wiki](https://github.com/pdellaert/nuage-vspk-ansible/wiki)
+More details on the [Wiki](https://github.com/nuagenetworks/vspk-ansible/wiki)
 
 ## Trying the module
 1. Clone this repository onto a machine with Ansible and VSPK-Python installed, which has access to your VSD.
