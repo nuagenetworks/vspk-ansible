@@ -19,9 +19,9 @@ More details on the [Wiki](https://github.com/nuagenetworks/vspk-ansible/wiki)
 3. From within the repository folder, execute `ansible-playbook nuage-vspk-tests.yml`
 
 ## Special considerations
-* `type` and `parent_type` are the CamelCase values of the classes in the Python VSPK (without the `NU` part). Example, a domain template should be mentioned as `DomainTemplate`, as can seen in the [Domain Template VSPK doc](https://nuagenetworks.github.io/vspkdoc/html/v4_0/nudomaintemplate.html): nudomaintemplate.NU**`DomainTemplate`**(bambou.nurest_object.NUMetaRESTObject,) .
+* `type` and `parent_type` are the CamelCase values of the classes in the Python VSPK (without the `NU` part). Example, a domain template should be mentioned as `DomainTemplate`, as can seen in the [Domain Template VSPK doc](https://nuagenetworks.github.io/vspkdoc/html/v4_0/nudomaintemplate.html): `nudomaintemplate.NU`**`DomainTemplate`**`(bambou.nurest_object.NUMetaRESTObject,)`.
 * `properties` should be represented by there lowercase-underscore names, as documented in the [Nuage Python VSPK docs](https://nuagenetworks.github.io/vspkdoc/html/index.html).
-* `match_filter` is used as a way of finding a specific entiy (if no `id` is specified), if this is omitted, a filter is build based on all `properties`, which in most cases fail. 
+* `match_filter` is used as a way of finding a specific entiy (if no `id` is specified), if this is omitted, a filter is build based on all `properties`, which in most cases will fail. 
 * For the `match_filter`, the filter should use the camelCase names of the properties as in the [Nuage API docs](https://nuagenetworks.github.io/vsd-api-documentation/v4_0/), for instance: `name == 'Allow all policy' and policyState == 'DRAFT'`.
 
 ### Useful links
