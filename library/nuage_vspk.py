@@ -578,20 +578,22 @@ class NuageEntityManager(object):
         elif self.command and self.command == 'change_password':
             # Command change_password
             self.entity = self.find_first()
-            if not self.entity:
+            if self.module.check_mode:
+                self.result['changed'] = True
+            elif not self.entity:
                 self.module.fail_json(msg='Unable to find entity')
+            else:
+                try:
+                    getattr(self.entity, 'password')
+                except AttributeError:
+                    self.module.fail_json(msg='Entity does not have a password property')
 
-            try:
-                getattr(self.entity, 'password')
-            except AttributeError:
-                self.module.fail_json(msg='Entity does not have a password property')
+                try:
+                    setattr(self.entity, 'password', self.properties['password'])
+                except AttributeError:
+                    self.module.fail_json(msg='Password can not be changed for entity')
 
-            try:
-                setattr(self.entity, 'password', self.properties['password'])
-            except AttributeError:
-                self.module.fail_json(msg='Password can not be changed for entity')
-
-            self.save_entity()
+                self.save_entity()
 
         elif self.state == 'present':
             # Present state
