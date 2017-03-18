@@ -105,12 +105,15 @@ options:
             - With I(command=find), otherwise, if I(match_filter) is define, it will use that filter to search.
             - With I(command=find), otherwise, if I(properties) are defined, it will do an AND search using all properties.
             - With I(command=change_password), a password of a user can be changed. Warning - In case the password is the same as the existing, it will throw an error.
+            - With I(command=wait_for_job), the module will wait for a job to either have a status of SUCCESS or ERROR. In case an ERROR status is found, the module will exit with an error.
+            - With I(command=wait_for_job), the job will always be returned, even if the state is ERROR situation.
             - Either I(state) or I(command) needs to be defined, both can not be defined at the same time.
         required: false
         default: null
         choices:
             - find
             - change_password
+            - wait_for_job
         aliases: []
         version_added: "1.0"
     match_filter:
@@ -328,6 +331,7 @@ entities:
         }]
 '''
 
+import time
 try:
     from vspk import v4_0 as vsdk
     from vspk.v4_0 import fetchers
@@ -337,7 +341,7 @@ try:
 except ImportError:
     HASVSPK = False
 
-SUPPORTED_COMMANDS = ['find', 'change_password']
+SUPPORTED_COMMANDS = ['find', 'change_password', 'wait_for_job']
 
 class NuageEntityManager(object):
     """
@@ -474,6 +478,8 @@ class NuageEntityManager(object):
             self.module.fail_json(msg='In case of absent state, an id, properties and/or a match_filter has to be defined')
         elif self.command and self.command == 'change_password' and (not self.id or not self.properties or not self.properties['password']):
             self.module.fail_json(msg='In case of change_password command, an id and a properties password have to be defined')
+        elif self.command and self.command == 'wait_for_job' and not self.id:
+            self.module.fail_json(msg='In case of wait_for_job command, an id has to be provided for the job')
 
     def handle_parent(self):
         """
@@ -589,7 +595,15 @@ class NuageEntityManager(object):
                     self.module.fail_json(msg='Password can not be changed for entity')
 
                 self.save_entity()
-
+        elif self.command and self.command == 'wait_for_job':
+            # Command wait_for_job
+            self.entity = self.find_first()
+            if self.module.check_mode:
+                self.result['changed'] = True
+            elif not self.entity:
+                self.module.fail_json(msg='Unable to find entity')
+            else:
+                self.wait_for_job()
         elif self.state == 'present':
             # Present state
             self.entity = self.find_first()
@@ -742,6 +756,25 @@ class NuageEntityManager(object):
         self.result['id'] = None
         self.result['changed'] = True
 
+    def wait_for_job(self):
+        """
+        Waits for a job to finish
+        """
+        running = False
+        if self.entity.status == 'RUNNING':
+            self.result['changed'] = True
+            running = True
+
+        while running:
+            time.sleep(1)
+            self.entity.fetch()
+
+            if self.entity.status != 'RUNNING':
+                running = False
+
+        self.result['entities'] = [self.entity.to_dict()]
+        if self.entity.status == 'ERROR':
+            self.module.fail_json(msg='Job ended in an error')
 
 from ansible.module_utils.basic import AnsibleModule
 

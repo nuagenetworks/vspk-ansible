@@ -254,8 +254,12 @@
   register: nuage_job
 
 - name: Wait for job to finish
-  pause:
-    seconds: 3
+  connection: local
+  nuage_vspk:
+    auth: "{{ nuage_auth }}"
+    type: Job
+    id: "{{ nuage_job.id }}"
+    command: wait_for_job
 
 - name: Create top allow all egress policy
   connection: local
@@ -395,8 +399,12 @@
   register: nuage_job
 
 - name: Wait for job to finish
-  pause:
-    seconds: 3
+  connection: local
+  nuage_vspk:
+    auth: "{{ nuage_auth }}"
+    type: Job
+    id: "{{ nuage_job.id }}"
+    command: wait_for_job
 
 # Creating a new Domain (if it doesn't exist yet)
 - name: Creating a few Domains from the DomainTemplate
@@ -415,6 +423,47 @@
   with_items: 
     - "Finance-App"
     - "HR-App"
+
+- name: Finding Finance-App domain
+  connection: local
+  nuage_vspk:
+    auth: "{{ nuage_auth }}"
+    type: Domain
+    parent_id: "{{ nuage_enterprise.id }}"
+    parent_type: Enterprise
+    command: find
+    properties:
+      name: "Finance-App"
+  register: nuage_domain
+
+- name: Create the Audit Zone
+  connection: local
+  nuage_vspk:
+    auth: "{{ nuage_auth }}"
+    type: Zone
+    parent_id: "{{ nuage_domain.id }}"
+    parent_type: Domain
+    state: present
+    properties:
+      name: "Audit-Zone"
+      description: "Created by Ansible"
+  register: nuage_audit_zone
+
+- name: Create the Audit Subnet
+  connection: local
+  nuage_vspk:
+    auth: "{{ nuage_auth }}"
+    type: Subnet
+    parent_id: "{{ nuage_audit_zone.id }}"
+    parent_type: Zone
+    state: present
+    properties:
+      name: "Audit-Subnet"
+      description: "Created by Ansible"
+      address: "10.88.88.0"
+      netmask: "255.255.255.0"
+      gateway: "10.88.88.1"
+  register: nuage_audit_subnet
 
 ###############################################################################
 # PAUSING HERE FOR VERIFICATION
@@ -454,7 +503,7 @@
     auth: "{{ nuage_auth }}"
     type: Domain
     state: absent
-    id: "{{ item.ID}}"
+    id: "{{ item.ID }}"
   with_items: "{{ nuage_domains.entities }}"
   when: nuage_domains.entities is defined
 
