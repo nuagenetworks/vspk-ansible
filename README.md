@@ -10,6 +10,7 @@ The nuage_vspk module for Ansible allows you to manage or find Nuage VSP entitie
 * Unassign
 * Search for an entity
 * Change passwords on users (can not be done through regular update)
+* Wait for a job
 
 More details on the [Wiki](https://github.com/nuagenetworks/vspk-ansible/wiki)
 
