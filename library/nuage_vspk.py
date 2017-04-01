@@ -114,6 +114,7 @@ options:
             - find
             - change_password
             - wait_for_job
+            - get_csp_enterprise
         aliases: []
         version_added: "1.0"
     match_filter:
@@ -341,7 +342,7 @@ try:
 except ImportError:
     HASVSPK = False
 
-SUPPORTED_COMMANDS = ['find', 'change_password', 'wait_for_job']
+SUPPORTED_COMMANDS = ['find', 'change_password', 'wait_for_job', 'get_csp_enterprise']
 
 class NuageEntityManager(object):
     """
@@ -604,6 +605,9 @@ class NuageEntityManager(object):
                 self.module.fail_json(msg='Unable to find entity')
             else:
                 self.wait_for_job()
+        elif self.command and self.command == 'get_csp_enterprise':
+            # Command get_csp_enterprise
+            self.get_csp_enterprise()
         elif self.state == 'present':
             # Present state
             self.entity = self.find_first()
@@ -775,6 +779,19 @@ class NuageEntityManager(object):
         self.result['entities'] = [self.entity.to_dict()]
         if self.entity.status == 'ERROR':
             self.module.fail_json(msg='Job ended in an error')
+
+    def get_csp_enterprise(self):
+        """
+        Find the CSP enterprise
+        """
+        self.id = self.parent.enterprise_id
+        self.entity = vsdk.NUEnterprise(id=self.id)
+        try:
+            self.entity.fetch()
+        except BambouHTTPError, e:
+            self.module.fail_json(msg='Unable to fetch CSP enterprise: {0}'.format(e))
+        self.result['id'] = self.id
+        self.result['entities'] = [self.entity.to_dict()]
 
 from ansible.module_utils.basic import AnsibleModule
 
