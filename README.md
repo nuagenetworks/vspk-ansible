@@ -9,6 +9,7 @@ The nuage_vspk module for Ansible allows you to manage or find Nuage VSP entitie
 * Assign
 * Unassign
 * Search for an entity
+* Wait for a job to finish
 * Change passwords on users (can not be done through regular update)
 * Wait for a job
 
@@ -38,7 +39,9 @@ The advanced role will create a Enterprise with an admin user,  a domain templat
 This module is in active development and in **beta** stage. As such, this module is not officially supported from a Nuage Networks product perspective.
 
 ## Tested with
+* Nuage 4.0R5 and VSPK-Python 4.0.5
 * Nuage 4.0R7 and VSPK-Python 4.0.7
+* Nuage 4.0R8 and VSPK-Python 4.0.8
 * [NuageX](https://nuagex.io) (Nuage 4.0R5 and VSPK-Python 4.0.5)
 * Ansible 2.2
 

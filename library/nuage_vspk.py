@@ -32,7 +32,7 @@ options:
         description:
             - Dict with the authentication information required to connect to a Nuage VSP environment.
             - Requires a I(api_username) parameter (example csproot).
-            - Requires a I(api_password) parameter (example csproot).
+            - Requires either a I(api_password) parameter (example csproot) or a I(api_certificate) and I(api_key) parameters, which point to the certificate and key files for certificate based authentication.
             - Requires a I(api_enterprise) parameter (example csp).
             - Requires a I(api_url) parameter (example https://10.0.0.10:8443).
         required: true
@@ -114,6 +114,7 @@ options:
             - find
             - change_password
             - wait_for_job
+            - get_csp_enterprise
         aliases: []
         version_added: "1.0"
     match_filter:
@@ -149,6 +150,17 @@ EXAMPLES = '''
 #   auth:
 #     api_username: csproot
 #     api_password: csproot
+#     api_enterprise: csp
+#     api_url: https://10.0.0.10:8443
+#   enterprise_name: Ansible-Enterprise
+#   enterprise_new_name: Ansible-Updated-Enterprise
+#
+# or, for certificate based authentication
+# vars:
+#   auth:
+#     api_username: csproot
+#     api_certificate: /path/to/user-certificate.pem
+#     api_key: /path/to/user-Key.pem
 #     api_enterprise: csp
 #     api_url: https://10.0.0.10:8443
 #   enterprise_name: Ansible-Enterprise
@@ -341,7 +353,7 @@ try:
 except ImportError:
     HASVSPK = False
 
-SUPPORTED_COMMANDS = ['find', 'change_password', 'wait_for_job']
+SUPPORTED_COMMANDS = ['find', 'change_password', 'wait_for_job', 'get_csp_enterprise']
 
 class NuageEntityManager(object):
     """
@@ -355,6 +367,8 @@ class NuageEntityManager(object):
         self.api_password = None
         self.api_enterprise = None
         self.api_url = None
+        self.api_certificate = None
+        self.api_key = None
         self.type = module.params['type']
 
         self.state = None
@@ -408,7 +422,11 @@ class NuageEntityManager(object):
         """
         try:
             # Connecting to Nuage
-            self.nuage_connection = vsdk.NUVSDSession(username=self.api_username, password=self.api_password,
+            if self.api_certificate and self.api_key:
+                self.nuage_connection = vsdk.NUVSDSession(username=self.api_username, enterprise=self.api_enterprise,
+                                                          api_url=self.api_url, certificate=(self.api_certificate, self.api_key))
+            else:
+                self.nuage_connection = vsdk.NUVSDSession(username=self.api_username, password=self.api_password,
                                                       enterprise=self.api_enterprise, api_url=self.api_url)
             self.nuage_connection.start()
         except BambouHTTPError, e:
@@ -422,14 +440,19 @@ class NuageEntityManager(object):
         # Checking auth parameters
         if 'api_username' not in self.auth.keys() or not self.auth['api_username']:
             self.module.fail_json(msg='Missing api_username parameter in auth')
-        if 'api_password' not in self.auth.keys() or not self.auth['api_password']:
-            self.module.fail_json(msg='Missing api_password parameter in auth')
+        if ('api_password' not in self.auth.keys() or not self.auth['api_password']) and \
+                ('api_certificate' not in self.auth.keys() or 'api_key' not in self.auth.keys() or not self.auth['api_certificate'] or not self.auth['api_key']):
+            self.module.fail_json(msg='Missing api_password or api_certificate and api_key parameter in auth')
         if 'api_enterprise' not in self.auth.keys() or not self.auth['api_enterprise']:
             self.module.fail_json(msg='Missing api_enterprise parameter in auth')
         if 'api_url' not in self.auth.keys() or not self.auth['api_url']:
             self.module.fail_json(msg='Missing api_url parameter in auth')
         self.api_username = self.auth['api_username']
-        self.api_password = self.auth['api_password']
+        if 'api_password' in self.auth.keys() and self.auth['api_password']:
+            self.api_password = self.auth['api_password']
+        if 'api_certificate' in self.auth.keys() and 'api_key' in self.auth.keys() and self.auth['api_certificate'] and self.auth['api_key']:
+            self.api_certificate = self.auth['api_certificate']
+            self.api_key = self.auth['api_key']
         self.api_enterprise = self.auth['api_enterprise']
         self.api_url = self.auth['api_url']
 
@@ -604,6 +627,9 @@ class NuageEntityManager(object):
                 self.module.fail_json(msg='Unable to find entity')
             else:
                 self.wait_for_job()
+        elif self.command and self.command == 'get_csp_enterprise':
+            # Command get_csp_enterprise
+            self.get_csp_enterprise()
         elif self.state == 'present':
             # Present state
             self.entity = self.find_first()
@@ -775,6 +801,19 @@ class NuageEntityManager(object):
         self.result['entities'] = [self.entity.to_dict()]
         if self.entity.status == 'ERROR':
             self.module.fail_json(msg='Job ended in an error')
+
+    def get_csp_enterprise(self):
+        """
+        Find the CSP enterprise
+        """
+        self.id = self.parent.enterprise_id
+        self.entity = vsdk.NUEnterprise(id=self.id)
+        try:
+            self.entity.fetch()
+        except BambouHTTPError, e:
+            self.module.fail_json(msg='Unable to fetch CSP enterprise: {0}'.format(e))
+        self.result['id'] = self.id
+        self.result['entities'] = [self.entity.to_dict()]
 
 from ansible.module_utils.basic import AnsibleModule
 

@@ -70,6 +70,15 @@
       name: "{{ enterprise_name }}"
   register: nuage_enterprise
 
+# Getting the CSP enterprise
+- name: Get CSP Enterprise
+  connection: local
+  nuage_vspk:
+    auth: "{{ nuage_auth }}"
+    type: Enterprise
+    command: get_csp_enterprise
+  register: nuage_csp_enterprise
+
 - name: Create admin user
   connection: local
   nuage_vspk:
@@ -364,7 +373,7 @@
       priority: 999999
       protocol: "ANY"
 
-- name: Create a forward rulee
+- name: Create a forward rule
   connection: local
   nuage_vspk:
     auth: "{{ nuage_auth }}"
