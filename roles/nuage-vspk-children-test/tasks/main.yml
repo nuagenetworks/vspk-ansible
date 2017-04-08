@@ -1,0 +1,76 @@
+- name: Setup Enterprise and domain structure
+  connection: local
+  nuage_vspk:
+    auth: "{{ nuage_auth }}"
+    type: Enterprise
+    state: present
+    properties:
+      name: "{{ enterprise_name }}"
+    children:
+    - type: DomainTemplate
+      match_filter: "name == 'Empty-Template'"
+      properties:
+        name: "Empty-Template"
+    - type: DomainTemplate
+      match_filter: "name == 'Advanced-Template'"
+      properties:
+        name: "Advanced-Template"
+      children:
+      - type: ZoneTemplate
+        properties:
+          name: "Web-Zone"
+        children:
+        - type: SubnetTemplate
+          match_filter: "name == 'Web01-Net'"
+          properties:
+            name: "Web01-Net"
+            address: "10.10.10.0"
+            netmask: "255.255.255.0"
+            gateway: "10.10.10.1"
+        - type: SubnetTemplate
+          match_filter: "name == 'Web02-Net'"
+          properties:
+            name: "Web02-Net"
+            address: "10.10.11.0"
+            netmask: "255.255.255.0"
+            gateway: "10.10.11.1"
+        - type: SubnetTemplate
+          match_filter: "name == 'Web03-Net'"
+          properties:
+            name: "Web03-Net"
+            address: "10.10.13.0"
+            netmask: "255.255.255.0"
+            gateway: "10.10.13.1"
+      - type: ZoneTemplate
+        properties:
+          name: "App-Zone"
+        children:
+        - type: SubnetTemplate
+          match_filter: "name == 'App01-Net'"
+          properties:
+            name: "App01-Net"
+            address: "10.10.20.0"
+            netmask: "255.255.255.0"
+            gateway: "10.10.20.1"
+      - type: ZoneTemplate
+        properties:
+          name: "DB-Zone"
+        children:
+        - type: SubnetTemplate
+          match_filter: "name == 'DB01-Net'"
+          properties:
+            name: "DB01-Net"
+            address: "10.10.30.0"
+            netmask: "255.255.255.0"
+            gateway: "10.10.30.1"
+      - type: ZoneTemplate
+        properties:
+          name: "FW-Zone"
+        children:
+        - type: SubnetTemplate
+          match_filter: "name == 'FW01-Net'"
+          properties:
+            name: "FW01-Net"
+            address: "10.10.90.0"
+            netmask: "255.255.255.0"
+            gateway: "10.10.90.1"

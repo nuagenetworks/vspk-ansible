@@ -355,6 +355,7 @@ except ImportError:
 
 SUPPORTED_COMMANDS = ['find', 'change_password', 'wait_for_job', 'get_csp_enterprise']
 
+
 class NuageEntityManager(object):
     """
     This module is meant to manage an entity in a Nuage VSP Platform
@@ -399,6 +400,10 @@ class NuageEntityManager(object):
         if 'properties' in module.params.keys():
             self.properties = module.params['properties']
 
+        self.children = None
+        if 'children' in module.params.keys():
+            self.children = module.params['children']
+
         self.entity = None
         self.entity_class = None
         self.parent = None
@@ -414,7 +419,7 @@ class NuageEntityManager(object):
 
         self.verify_input()
         self.connect_vspk()
-        self.handle_parent()
+        self.find_parent()
 
     def connect_vspk(self):
         """
@@ -504,7 +509,7 @@ class NuageEntityManager(object):
         elif self.command and self.command == 'wait_for_job' and not self.id:
             self.module.fail_json(msg='In case of wait_for_job command, an id has to be provided for the job')
 
-    def handle_parent(self):
+    def find_parent(self):
         """
         Fetches the parent if needed, otherwise configures the root object as parent. Also configures the entity fetcher
         Important notes:
@@ -526,11 +531,11 @@ class NuageEntityManager(object):
             self.module.fail_json(
                 msg='Unable to find a fetcher for entity, and no ID specified. This is only supported if the root object can be a parent')
 
-    def find_all(self):
+    def find_entities(self, id=None, entity_class=None, match_filter=None, properties=None, entity_fetcher=None):
         search_filter = ''
 
-        if self.id:
-            found_entity = self.entity_class(id=self.id)
+        if id:
+            found_entity = entity_class(id=id)
             try:
                 found_entity.fetch()
             except BambouHTTPError, e:
@@ -538,32 +543,30 @@ class NuageEntityManager(object):
 
             return [found_entity]
 
-        elif self.match_filter:
-            search_filter = self.match_filter
-        elif self.properties:
+        elif match_filter:
+            search_filter = match_filter
+        elif properties:
             # Building filter
-            for num, property_name in enumerate(self.properties):
+            for num, property_name in enumerate(properties):
                 if num > 0:
                     search_filter += ' and '
-                search_filter += '{0:s} == "{1}"'.format(property_name, self.properties[property_name])
+                search_filter += '{0:s} == "{1}"'.format(property_name, properties[property_name])
 
-        self.module.params['filter_test'] = search_filter
-
-        if self.entity_fetcher is not None:
+        if entity_fetcher is not None:
             try:
-                return self.entity_fetcher.get(filter=search_filter)
+                return entity_fetcher.get(filter=search_filter)
             except BambouHTTPError:
                 pass
         return []
 
-    def find_first(self):
+    def find_entity(self, id=None, entity_class=None, match_filter=None, properties=None, entity_fetcher=None):
         """
         Finds a single matching entity that matches all the provided properties, unless an ID is specified, in which
         case it just fetches the one item
         """
         search_filter = ''
-        if self.id:
-            found_entity = self.entity_class(id=self.id)
+        if id:
+            found_entity = entity_class(id=id)
             try:
                 found_entity.fetch()
             except BambouHTTPError, e:
@@ -571,26 +574,26 @@ class NuageEntityManager(object):
 
             return found_entity
 
-        elif self.match_filter:
-            search_filter = self.match_filter
-        elif self.properties:
+        elif match_filter:
+            search_filter = match_filter
+        elif properties:
             # Building filter
-            for num, property_name in enumerate(self.properties):
+            for num, property_name in enumerate(properties):
                 if num > 0:
                     search_filter += ' and '
-                search_filter += '{0:s} == "{1}"'.format(property_name, self.properties[property_name])
+                search_filter += '{0:s} == "{1}"'.format(property_name, properties[property_name])
 
-        if self.entity_fetcher is not None:
+        if entity_fetcher is not None:
             try:
-                return self.entity_fetcher.get_first(filter=search_filter)
+                return entity_fetcher.get_first(filter=search_filter)
             except BambouHTTPError:
                 pass
         return None
 
-    def handle_entity(self):
+    def handle_main_entity(self):
         if self.command and self.command == 'find':
             # Command find
-            entities = self.find_all()
+            entities = self.find_entities(id=self.id, entity_class=self.entity_class, match_filter=self.match_filter, properties=self.properties, entity_fetcher=self.entity_fetcher)
             self.result['changed'] = False
             if entities:
                 if len(entities) == 1:
@@ -601,7 +604,7 @@ class NuageEntityManager(object):
                 self.module.fail_json(msg='Unable to find matching entries')
         elif self.command and self.command == 'change_password':
             # Command change_password
-            self.entity = self.find_first()
+            self.entity = self.find_entity(id=self.id, entity_class=self.entity_class, match_filter=self.match_filter, properties=self.properties, entity_fetcher=self.entity_fetcher)
             if self.module.check_mode:
                 self.result['changed'] = True
             elif not self.entity:
@@ -617,41 +620,50 @@ class NuageEntityManager(object):
                 except AttributeError:
                     self.module.fail_json(msg='Password can not be changed for entity')
 
-                self.save_entity()
+                self.entity = self.save_entity(entity=self.entity)
+                self.result['id'] = self.entity.id
+                self.result['entities'].append(self.entity.to_dict())
         elif self.command and self.command == 'wait_for_job':
             # Command wait_for_job
-            self.entity = self.find_first()
+            self.entity = self.find_entity(id=self.id, entity_class=self.entity_class, match_filter=self.match_filter, properties=self.properties, entity_fetcher=self.entity_fetcher)
             if self.module.check_mode:
                 self.result['changed'] = True
             elif not self.entity:
                 self.module.fail_json(msg='Unable to find entity')
             else:
-                self.wait_for_job()
+                self.wait_for_job(self.entity)
         elif self.command and self.command == 'get_csp_enterprise':
             # Command get_csp_enterprise
             self.get_csp_enterprise()
         elif self.state == 'present':
             # Present state
-            self.entity = self.find_first()
+            self.entity = self.find_entity(id=self.id, entity_class=self.entity_class, match_filter=self.match_filter, properties=self.properties, entity_fetcher=self.entity_fetcher)
 
             # Determining action to take
             if self.entity_fetcher is not None and self.entity_fetcher.relationship == 'member' and not self.entity:
                 self.module.fail_json('Trying to assign an entity that does not exist')
             elif self.entity_fetcher is not None and self.entity_fetcher.relationship == 'member' and self.entity:
                 # Entity is a member, need to check if already present
-                if not self.is_member():
+                if not self.is_member(entity_fetcher=self.entity_fetcher, entity=self.entity):
                     # Entity is not a member yet
                     if self.module.check_mode:
                         self.result['changed'] = True
                     else:
-                        self.assign_member()
+                        self.assign_member(entity_fetcher=self.entity_fetcher, entity=self.entity, entity_class=self.entity_class, parent=self.parent, set_output=True)
             elif self.entity_fetcher is not None and self.entity_fetcher.relationship in ['child',
                                                                                           'root'] and not self.entity:
                 # Entity is not present as a child, creating
                 if self.module.check_mode:
                     self.result['changed'] = True
                 else:
-                    self.create_entity()
+                    self.entity = self.create_entity(entity_class=self.entity_class, parent=self.parent, properties=self.properties)
+                    self.result['id'] = self.entity.id
+                    self.result['entities'].append(self.entity.to_dict())
+
+                # Checking children
+                if self.children:
+                    for child in self.children:
+                        self.handle_child(child=child, parent=self.entity)
             elif self.entity:
                 # Need to compare properties in entity and found entity
                 changed = False
@@ -679,127 +691,193 @@ class NuageEntityManager(object):
                 if self.module.check_mode:
                     self.result['changed'] = changed
                 elif changed:
-                    self.save_entity()
+                    self.entity = self.save_entity(entity=self.entity)
+                    self.result['id'] = self.entity.id
+                    self.result['entities'].append(self.entity.to_dict())
                 else:
                     self.result['id'] = self.entity.id
                     self.result['entities'].append(self.entity.to_dict())
+
+                # Checking children
+                if self.children:
+                    for child in self.children:
+                        self.handle_child(child=child, parent=self.entity)
             elif not self.module.check_mode:
                 self.module.fail_json(msg='Invalid situation, verify parameters')
 
         elif self.state == 'absent':
             # Absent state
-            self.entity = self.find_first()
+            self.entity = self.find_entity(id=self.id, entity_class=self.entity_class, match_filter=self.match_filter, properties=self.properties, entity_fetcher=self.entity_fetcher)
             if self.entity and (self.entity_fetcher is None or self.entity_fetcher.relationship in ['child', 'root']):
                 # Entity is present, deleting
                 if self.module.check_mode:
                     self.result['changed'] = True
                 else:
-                    self.delete_entity()
+                    self.delete_entity(self.entity)
+                    self.result['id'] = None
             elif self.entity and self.entity_fetcher.relationship == 'member':
                 # Entity is a member, need to check if already present
-                if self.is_member():
+                if self.is_member(entity_fetcher=self.entity_fetcher, entity=self.entity):
                     # Entity is not a member yet
                     if self.module.check_mode:
                         self.result['changed'] = True
                     else:
-                        self.unassign_member()
+                        self.unassign_member(entity_fetcher=self.entity_fetcher, entity=self.entity, entity_class=self.entity_class, parent=self.parent, set_output=True)
 
         self.module.exit_json(**self.result)
 
-    def is_member(self):
+    def handle_child(self, child, parent):
+        """
+        Handles children of a main entity. Fields are similar to the normal fields
+        Currently only supported state: present
+        """
+        if 'type' not in child.keys():
+            self.module.fail_json(msg='Child type unspecified')
+        elif 'id' not in child.keys() and 'properties' not in child.keys():
+            self.module.fail_json(msg='Child ID or properties unspecified')
+
+        # Setting intern variables
+        child_id = None
+        if 'id' in child.keys():
+            child_id = child['id']
+        child_properties = None
+        if 'properties' in child.keys():
+            child_properties = child['properties']
+        child_filter = None
+        if 'match_filter' in child.keys():
+            child_filter = child['match_filter']
+
+        # Checking if type exists
+        entity_class = None
+        try:
+            entity_class = getattr(vsdk, 'NU{0:s}'.format(child['type']))
+        except AttributeError:
+            self.module.fail_json(msg='Unrecognised child type specified')
+
+        entity_fetcher = parent.fetcher_for_rest_name(entity_class.rest_name)
+        if entity_fetcher is None and not child_id and not self.module.check_mode:
+            self.module.fail_json(msg='Unable to find a fetcher for child, and no ID specified.')
+
+        # Try and find the child
+        entity = self.find_entity(id=child_id, entity_class=entity_class, match_filter=child_filter, properties=child_properties, entity_fetcher=entity_fetcher)
+
+        # Determining action to take
+        if entity_fetcher.relationship == 'member' and not entity:
+            self.module.fail_json('Trying to assign a child that does not exist')
+        elif entity_fetcher.relationship == 'member' and entity:
+            # Entity is a member, need to check if already present
+            if not self.is_member(entity_fetcher=entity_fetcher, entity=entity):
+                # Entity is not a member yet
+                if self.module.check_mode:
+                    self.result['changed'] = True
+                else:
+                    self.assign_member(entity_fetcher=entity_fetcher, entity=entity, entity_class=entity_class, parent=parent)
+        elif entity_fetcher is not None and entity_fetcher.relationship in ['child', 'root'] and not entity:
+            # Entity is not present as a child, creating
+            if self.module.check_mode:
+                self.result['changed'] = True
+            else:
+                entity = self.create_entity(entity_class=entity_class, parent=parent, properties=child_properties)
+                self.result['entities'].append(entity.to_dict())
+
+        # Checking children
+        if 'children' in child.keys() and not self.module.check_mode:
+            for subchild in child['children']:
+                self.handle_child(child=subchild, parent=entity)
+
+    def is_member(self, entity_fetcher, entity):
         """
         Verifies if the entity is a member of the parent in the fetcher
         """
-        members = self.entity_fetcher.get()
+        members = entity_fetcher.get()
         for member in members:
-            if member.id == self.entity.id:
+            if member.id == entity.id:
                 return True
         return False
 
-    def assign_member(self):
+    def assign_member(self, entity_fetcher, entity, entity_class, parent, set_output):
         """
         Adds the entity as a member to a parent
         """
-        members = self.entity_fetcher.get()
-        members.append(self.entity)
+        members = entity_fetcher.get()
+        members.append(entity)
         try:
-            self.parent.assign(members, self.entity_class)
+            parent.assign(members, entity_class)
         except BambouHTTPError, e:
             self.module.fail_json(msg='Unable to assign entity as a member: {0}'.format(e))
         self.result['changed'] = True
-        self.result['id'] = self.entity.id
-        self.result['entities'] = [self.entity.to_dict()]
+        if set_output:
+            self.result['id'] = entity.id
+            self.result['entities'].append(entity.to_dict())
 
-    def unassign_member(self):
+    def unassign_member(self, entity_fetcher, entity, entity_class, parent, set_output):
         """
         Removes the entity as a member of a parent
         """
         members = []
-        for member in self.entity_fetcher.get():
-            if member.id != self.entity.id:
+        for member in entity_fetcher.get():
+            if member.id != entity.id:
                 members.append(member)
         try:
-            self.parent.assign(members, self.entity_class)
+            parent.assign(members, entity_class)
         except BambouHTTPError, e:
             self.module.fail_json(msg='Unable to remove entity as a member: {0}'.format(e))
         self.result['changed'] = True
-        self.result['id'] = self.entity.id
-        self.result['entities'] = [self.entity.to_dict()]
+        if set_output:
+            self.result['id'] = entity.id
+            self.result['entities'].append(entity.to_dict())
 
-    def create_entity(self):
+    def create_entity(self, entity_class, parent, properties):
         """
         Creates a new entity in the parent, with all properties configured as in the file
         """
-        self.entity = self.entity_class(**self.properties)
+        entity = entity_class(**properties)
         try:
-            self.parent.create_child(self.entity)
+            parent.create_child(entity)
         except BambouHTTPError, e:
             self.module.fail_json(msg='Unable to create entity: {0}'.format(e))
         self.result['changed'] = True
-        self.result['id'] = self.entity.id
-        self.result['entities'] = [self.entity.to_dict()]
+        return entity
 
-    def save_entity(self):
+    def save_entity(self, entity):
         """
         Updates an existing entity
         """
         try:
-            self.entity.save()
+            entity.save()
         except BambouHTTPError, e:
             self.module.fail_json(msg='Unable to update entity: {0}'.format(e))
         self.result['changed'] = True
-        self.result['id'] = self.entity.id
-        self.result['entities'] = [self.entity.to_dict()]
+        return entity
 
-    def delete_entity(self):
+    def delete_entity(self, entity):
         """
         Deletes an entity
         """
         try:
-            self.entity.delete()
+            entity.delete()
         except BambouHTTPError, e:
             self.module.fail_json(msg='Unable to delete entity: {0}'.format(e))
-        self.result['id'] = None
         self.result['changed'] = True
 
-    def wait_for_job(self):
+    def wait_for_job(self, entity):
         """
         Waits for a job to finish
         """
         running = False
-        if self.entity.status == 'RUNNING':
+        if entity.status == 'RUNNING':
             self.result['changed'] = True
             running = True
 
         while running:
             time.sleep(1)
-            self.entity.fetch()
+            entity.fetch()
 
-            if self.entity.status != 'RUNNING':
+            if entity.status != 'RUNNING':
                 running = False
 
-        self.result['entities'] = [self.entity.to_dict()]
-        if self.entity.status == 'ERROR':
+        self.result['entities'].append(entity.to_dict())
+        if entity.status == 'ERROR':
             self.module.fail_json(msg='Job ended in an error')
 
     def get_csp_enterprise(self):
@@ -813,7 +891,7 @@ class NuageEntityManager(object):
         except BambouHTTPError, e:
             self.module.fail_json(msg='Unable to fetch CSP enterprise: {0}'.format(e))
         self.result['id'] = self.id
-        self.result['entities'] = [self.entity.to_dict()]
+        self.result['entities'].append(self.entity.to_dict())
 
 from ansible.module_utils.basic import AnsibleModule
 
@@ -829,7 +907,8 @@ def main():
             state=dict(default=None, choices=['present', 'absent'], type='str'),
             command=dict(default=None, choices=SUPPORTED_COMMANDS, type='str'),
             match_filter=dict(default=None, required=False, type='str'),
-            properties=dict(default=None, required=False, type='dict')
+            properties=dict(default=None, required=False, type='dict'),
+            children=dict(default=None, required=False, type='list')
         ),
         supports_check_mode=True
     )
@@ -838,7 +917,7 @@ def main():
         module.fail_json(msg='vspk is required for this module')
 
     entity_manager = NuageEntityManager(module)
-    entity_manager.handle_entity()
+    entity_manager.handle_main_entity()
 
 
 if __name__ == '__main__':
