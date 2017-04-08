@@ -1,3 +1,12 @@
+###############################################################################
+# Sample Ansible role for the nuage_vspk Ansible module                       #
+# -----------------------------------------------------                       #
+# This role will create or update an Enterprise struture in Nuage             #
+#                                                                             #
+# It demonstrates the children capabilities of the nuage_vspk Ansible module  #
+# in a useful example.                                                        #
+###############################################################################
+
 - name: Setup Enterprise and domain structure
   connection: local
   nuage_vspk:
@@ -7,6 +16,57 @@
     properties:
       name: "{{ enterprise_name }}"
     children:
+    - type: L2DomainTemplate
+      properties:
+        name: "Unmanaged-Template"
+      children:
+      - type: EgressACLTemplate
+        match_filter: "name == 'Allow All'"
+        properties:
+          name: "Allow All"
+          active: true
+          default_allow_ip: true
+          default_allow_non_ip: true
+          default_install_acl_implicit_rules: true
+          description: "Created by Ansible"
+          priority_type: "TOP"
+      - type: IngressACLTemplate
+        match_filter: "name == 'Allow All'"
+        properties:
+          name: "Allow All"
+          active: true
+          default_allow_ip: true
+          default_allow_non_ip: true
+          description: "Created by Ansible"
+          priority_type: "TOP"
+    - type: L2DomainTemplate
+      match_filter: "name == 'Managed-Template'"
+      properties:
+        name: "Managed-Template"
+        address: "10.254.0.0"
+        netmask: "255.255.0.0"
+        gateway: "10.254.0.1"
+        dhcp_managed: true
+      children:
+      - type: EgressACLTemplate
+        match_filter: "name == 'Allow All'"
+        properties:
+          name: "Allow All"
+          active: true
+          default_allow_ip: true
+          default_allow_non_ip: true
+          default_install_acl_implicit_rules: true
+          description: "Created by Ansible"
+          priority_type: "TOP"
+      - type: IngressACLTemplate
+        match_filter: "name == 'Allow All'"
+        properties:
+          name: "Allow All"
+          active: true
+          default_allow_ip: true
+          default_allow_non_ip: true
+          description: "Created by Ansible"
+          priority_type: "TOP"
     - type: DomainTemplate
       match_filter: "name == 'Empty-Template'"
       properties:
@@ -74,3 +134,75 @@
             address: "10.10.90.0"
             netmask: "255.255.255.0"
             gateway: "10.10.90.1"
+      - type: PolicyGroupTemplate
+        match_filter: "name == 'App-Server'"
+        properties:
+          name: "App-Server"
+          type: "SOFTWARE"
+      - type: PolicyGroupTemplate
+        match_filter: "name == 'DB-Server'"
+        properties:
+          name: "DB-Server"
+          type: "SOFTWARE"
+      - type: PolicyGroupTemplate
+        match_filter: "name == 'Web-Server'"
+        properties:
+          name: "Web-Server"
+          type: "SOFTWARE"
+      - type: PolicyGroupTemplate
+        match_filter: "name == 'Firewall'"
+        properties:
+          name: "Firewall"
+          type: "SOFTWARE"
+      - type: RedirectionTargetTemplate
+        match_filter: "name == 'Firewall'"
+        properties:
+          name: "Firewall"
+          end_point_type: "L3"
+      - type: EgressACLTemplate
+        match_filter: "name == 'Allow All'"
+        properties:
+          name: "Allow All"
+          active: true
+          default_allow_ip: true
+          default_allow_non_ip: true
+          default_install_acl_implicit_rules: true
+          description: "Created by Ansible"
+          priority_type: "TOP"
+      - type: IngressACLTemplate
+        match_filter: "name == 'TOP-Ingress-Policy'"
+        properties:
+          name: "TOP-Ingress-Policy"
+          active: true
+          description: "Created by Ansible"
+          priority_type: "TOP"
+        children: 
+        - type: IngressACLEntryTemplate
+          match_filter: "priority == 0"
+          properties:
+            description: "Allow all ICMP"
+            action: "FORWARD"
+            ether_type: "0x0800"
+            location_type: "ANY"
+            network_type: "ANY"
+            priority: 0
+            protocol: "1"
+      - type: IngressACLTemplate
+        match_filter: "name == 'BOTTOM-Ingress-Policy'"
+        properties:
+          name: "BOTTOM-Ingress-Policy"
+          active: true
+          description: "Created by Ansible"
+          priority_type: "BOTTOM"
+        children: 
+        - type: IngressACLEntryTemplate
+          match_filter: "priority == 999999"
+          properties:
+            description: "Allow All"
+            action: "FORWARD"
+            ether_type: "0x0800"
+            location_type: "ANY"
+            network_type: "ANY"
+            priority: 999999
+            protocol: "ANY"
+
