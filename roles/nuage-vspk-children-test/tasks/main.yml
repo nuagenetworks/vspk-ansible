@@ -43,9 +43,9 @@
       match_filter: "name == 'Managed-Template'"
       properties:
         name: "Managed-Template"
-        address: "10.254.0.0"
+        address: "10.255.0.0"
         netmask: "255.255.0.0"
-        gateway: "10.254.0.1"
+        gateway: "10.255.0.1"
         dhcp_managed: true
       children:
       - type: EgressACLTemplate

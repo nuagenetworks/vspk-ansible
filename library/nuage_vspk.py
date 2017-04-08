@@ -772,13 +772,43 @@ class NuageEntityManager(object):
                     self.result['changed'] = True
                 else:
                     self.assign_member(entity_fetcher=entity_fetcher, entity=entity, entity_class=entity_class, parent=parent)
-        elif entity_fetcher is not None and entity_fetcher.relationship in ['child', 'root'] and not entity:
+        elif entity_fetcher.relationship in ['child', 'root'] and not entity:
             # Entity is not present as a child, creating
             if self.module.check_mode:
                 self.result['changed'] = True
             else:
                 entity = self.create_entity(entity_class=entity_class, parent=parent, properties=child_properties)
-                self.result['entities'].append(entity.to_dict())
+        elif entity_fetcher.relationship in ['child', 'root'] and entity:
+            # Need to compare properties in entity and found entity
+            changed = False
+            if child_properties:
+                for property_name in child_properties.keys():
+                    if property_name == 'password':
+                        continue
+                    entity_value = ''
+                    try:
+                        entity_value = getattr(entity, property_name)
+                    except AttributeError:
+                        self.module.fail_json(
+                            msg='Property {0:s} is not valid for this type of entity'.format(property_name))
+
+                    if entity_value != child_properties[property_name]:
+                        # Difference in values changing property
+                        changed = True
+                        try:
+                            setattr(entity, property_name, child_properties[property_name])
+                        except AttributeError:
+                            self.module.fail_json(
+                                msg='Property {0:s} can not be changed for this type of entity'.format(
+                                    property_name))
+
+            if self.module.check_mode:
+                self.result['changed'] = changed
+            elif changed:
+                entity = self.save_entity(entity=entity)
+
+        if entity:
+            self.result['entities'].append(entity.to_dict())
 
         # Checking children
         if 'children' in child.keys() and not self.module.check_mode:
