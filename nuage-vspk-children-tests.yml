@@ -1,7 +1,6 @@
 - hosts: localhost
   roles:
-    - nuage-vspk-test-basic
-    - nuage-vspk-test-advanced
+    - nuage-vspk-children-test
 
 #
 # Configure to match your environment
@@ -9,10 +8,9 @@
   vars:
     nuage_auth:
       api_username: csproot
-      api_certificate: /path/to/username.pem
-      api_key: /path/to/username-Key.pem
+      api_password: csproot
       api_enterprise: csp
-      api_url: https://localhost:7443
+      api_url: https://localhost:8443
       api_version: v4_0
     enterprise_name: Ansible-Test
     enterprise_new_name: Ansible-Updated-Test
