@@ -32,9 +32,11 @@ options:
         description:
             - Dict with the authentication information required to connect to a Nuage VSP environment.
             - Requires a I(api_username) parameter (example csproot).
-            - Requires either a I(api_password) parameter (example csproot) or a I(api_certificate) and I(api_key) parameters, which point to the certificate and key files for certificate based authentication.
+            - Requires either a I(api_password) parameter (example csproot) or a I(api_certificate) and I(api_key) parameters,
+              which point to the certificate and key files for certificate based authentication.
             - Requires a I(api_enterprise) parameter (example csp).
             - Requires a I(api_url) parameter (example https://10.0.0.10:8443).
+            - Requires a I(api_version) parameter (example v4_0).
         required: true
         default: null
         choices: []
@@ -87,8 +89,8 @@ options:
         description:
             - Specifies the desired state of the entity.
             - If I(state=present), in case the entity already exists, will update the entity if it is needed.
-            - If I(state=present), in case the relationship with the parent is a member relationship, will assign the entity as a member of the parent, if needed.
-            - If I(state=absent), in case the relationship with the parent is a member relationship, will unassign the entity as a member of the parent, if needed.
+            - If I(state=present), in case the relationship with the parent is a member relationship, will assign the entity as a member of the parent.
+            - If I(state=absent), in case the relationship with the parent is a member relationship, will unassign the entity as a member of the parent.
             - Either I(state) or I(command) needs to be defined, both can not be defined at the same time.
         required: false
         default: null
@@ -100,12 +102,15 @@ options:
     command:
         description:
             - Specifies a command to be executed.
-            - With I(command=find), if I(parent_id) and I(parent_type) are defined, it will only search within the parent. Otherwise, if allowed, will search in the root object.
+            - With I(command=find), if I(parent_id) and I(parent_type) are defined, it will only search within the parent. Otherwise, if allowed,
+              will search in the root object.
             - With I(command=find), if I(id) is specified, it will only return the single entity matching the id.
             - With I(command=find), otherwise, if I(match_filter) is define, it will use that filter to search.
             - With I(command=find), otherwise, if I(properties) are defined, it will do an AND search using all properties.
-            - With I(command=change_password), a password of a user can be changed. Warning - In case the password is the same as the existing, it will throw an error.
-            - With I(command=wait_for_job), the module will wait for a job to either have a status of SUCCESS or ERROR. In case an ERROR status is found, the module will exit with an error.
+            - With I(command=change_password), a password of a user can be changed. Warning - In case the password is the same as the existing,
+              it will throw an error.
+            - With I(command=wait_for_job), the module will wait for a job to either have a status of SUCCESS or ERROR. In case an ERROR status is found,
+              the module will exit with an error.
             - With I(command=wait_for_job), the job will always be returned, even if the state is ERROR situation.
             - Either I(state) or I(command) needs to be defined, both can not be defined at the same time.
         required: false
@@ -135,8 +140,21 @@ options:
         choices: []
         aliases: []
         version_added: "1.0"
+    children:
+        description:
+            - Can be used to specify a set of child entities.
+            - Mandatory properties of each child: I(type).
+            - Supported optional properties of each child are I(id), I(properties) and I(match_filter).
+            - The function of each of these properties is the same as in the general task definition.
+            - This can be used recursively
+            - Only useable in case I(state=present).
+        required: false
+        choices: []
+        aliaces: []
+        version_added: "1.0"
 notes:
-    - Check mode is supported, but with some caveats. It will not do any changes, and if possible try to determine if it is able do what is requested. In case a parent id is provided from a previous task, it might be empty and if a search is possible on root, it will do so, which can impact performance.
+    - Check mode is supported, but with some caveats. It will not do any changes, and if possible try to determine if it is able do what is requested.
+    - In case a parent id is provided from a previous task, it might be empty and if a search is possible on root, it will do so, which can impact performance.
 requirements:
     - Supports Nuage VSP 4.0Rx
     - Proper VSPK-Python installed for your Nuage version
@@ -152,6 +170,7 @@ EXAMPLES = '''
 #     api_password: csproot
 #     api_enterprise: csp
 #     api_url: https://10.0.0.10:8443
+#     api_version: v4_0
 #   enterprise_name: Ansible-Enterprise
 #   enterprise_new_name: Ansible-Updated-Enterprise
 #
@@ -163,6 +182,7 @@ EXAMPLES = '''
 #     api_key: /path/to/user-Key.pem
 #     api_enterprise: csp
 #     api_url: https://10.0.0.10:8443
+#     api_version: v4_0
 #   enterprise_name: Ansible-Enterprise
 #   enterprise_new_name: Ansible-Updated-Enterprise
 
@@ -312,6 +332,40 @@ EXAMPLES = '''
     type: Enterprise
     id: "{{ nuage_enterprise.id }}"
     state: absent
+
+# Setup an enterprise with Children
+- name: Setup Enterprise and domain structure
+  connection: local
+  nuage_vspk:
+    auth: "{{ nuage_auth }}"
+    type: Enterprise
+    state: present
+    properties:
+      name: "Child-based-Enterprise"
+    children:
+    - type: L2DomainTemplate
+      properties:
+        name: "Unmanaged-Template"
+      children:
+      - type: EgressACLTemplate
+        match_filter: "name == 'Allow All'"
+        properties:
+          name: "Allow All"
+          active: true
+          default_allow_ip: true
+          default_allow_non_ip: true
+          default_install_acl_implicit_rules: true
+          description: "Created by Ansible"
+          priority_type: "TOP"
+      - type: IngressACLTemplate
+        match_filter: "name == 'Allow All'"
+        properties:
+          name: "Allow All"
+          active: true
+          default_allow_ip: true
+          default_allow_non_ip: true
+          description: "Created by Ansible"
+          priority_type: "TOP"
 '''
 
 RETURN = '''
@@ -344,15 +398,16 @@ entities:
 '''
 
 import time
-try:
-    from vspk import v4_0 as vsdk
-    from bambou.exceptions import BambouHTTPError
+import importlib
 
-    HASVSPK = True
+try:
+    from bambou.exceptions import BambouHTTPError
+    HASBAMBOU = True
 except ImportError:
-    HASVSPK = False
+    HASBAMBOU = False
 
 SUPPORTED_COMMANDS = ['find', 'change_password', 'wait_for_job', 'get_csp_enterprise']
+VSPK = None
 
 
 class NuageEntityManager(object):
@@ -367,6 +422,7 @@ class NuageEntityManager(object):
         self.api_password = None
         self.api_enterprise = None
         self.api_url = None
+        self.api_version = None
         self.api_certificate = None
         self.api_key = None
         self.type = module.params['type']
@@ -416,6 +472,7 @@ class NuageEntityManager(object):
         }
         self.nuage_connection = None
 
+        self._verify_api()
         self._verify_input()
         self._connect_vspk()
         self._find_parent()
@@ -427,45 +484,56 @@ class NuageEntityManager(object):
         try:
             # Connecting to Nuage
             if self.api_certificate and self.api_key:
-                self.nuage_connection = vsdk.NUVSDSession(username=self.api_username, enterprise=self.api_enterprise,
-                                                          api_url=self.api_url, certificate=(self.api_certificate,
-                                                                                             self.api_key))
+                self.nuage_connection = VSPK.NUVSDSession(username=self.api_username, enterprise=self.api_enterprise, api_url=self.api_url,
+                                                          certificate=(self.api_certificate, self.api_key))
             else:
-                self.nuage_connection = vsdk.NUVSDSession(username=self.api_username, password=self.api_password,
-                                                          enterprise=self.api_enterprise, api_url=self.api_url)
+                self.nuage_connection = VSPK.NUVSDSession(username=self.api_username, password=self.api_password, enterprise=self.api_enterprise,
+                                                          api_url=self.api_url)
             self.nuage_connection.start()
         except BambouHTTPError, error:
-            self.module.fail_json(
-                msg='Unable to connect to the API URL with given username, password and enterprise: {0}'.format(error))
+            self.module.fail_json(msg='Unable to connect to the API URL with given username, password and enterprise: {0}'.format(error))
 
-    def _verify_input(self):
+    def _verify_api(self):
         """
-        Verifies the parameter input for types and parent correctness and necessary parameters
+        Verifies the API and loads the proper VSPK version
         """
         # Checking auth parameters
         if 'api_username' not in self.auth.keys() or not self.auth['api_username']:
             self.module.fail_json(msg='Missing api_username parameter in auth')
-        if ('api_password' not in self.auth.keys() or not self.auth['api_password']) and \
-                ('api_certificate' not in self.auth.keys() or 'api_key' not in self.auth.keys() or \
-                     not self.auth['api_certificate'] or not self.auth['api_key']):
+        if ('api_password' not in self.auth.keys() or not self.auth['api_password']) and (
+                'api_certificate' not in self.auth.keys() or 'api_key' not in self.auth.keys() or not self.auth['api_certificate'] or not self.auth['api_key']):
             self.module.fail_json(msg='Missing api_password or api_certificate and api_key parameter in auth')
         if 'api_enterprise' not in self.auth.keys() or not self.auth['api_enterprise']:
             self.module.fail_json(msg='Missing api_enterprise parameter in auth')
         if 'api_url' not in self.auth.keys() or not self.auth['api_url']:
             self.module.fail_json(msg='Missing api_url parameter in auth')
+        if 'api_version' not in self.auth.keys() or not self.auth['api_version']:
+            self.module.fail_json(msg='Missing api_version parameter in auth')
+
         self.api_username = self.auth['api_username']
         if 'api_password' in self.auth.keys() and self.auth['api_password']:
             self.api_password = self.auth['api_password']
-        if 'api_certificate' in self.auth.keys() and 'api_key' in self.auth.keys() and \
-                self.auth['api_certificate'] and self.auth['api_key']:
+        if 'api_certificate' in self.auth.keys() and 'api_key' in self.auth.keys() and self.auth['api_certificate'] and self.auth['api_key']:
             self.api_certificate = self.auth['api_certificate']
             self.api_key = self.auth['api_key']
         self.api_enterprise = self.auth['api_enterprise']
         self.api_url = self.auth['api_url']
+        self.api_version = self.auth['api_version']
+
+        try:
+            global VSPK
+            VSPK = importlib.import_module('vspk.{0:s}'.format(self.api_version))
+        except ImportError:
+            self.module.fail_json(msg='vspk is required for this module, or the API version specified does not exist.')
+
+    def _verify_input(self):
+        """
+        Verifies the parameter input for types and parent correctness and necessary parameters
+        """
 
         # Checking if type exists
         try:
-            self.entity_class = getattr(vsdk, 'NU{0:s}'.format(self.type))
+            self.entity_class = getattr(VSPK, 'NU{0:s}'.format(self.type))
         except AttributeError:
             self.module.fail_json(msg='Unrecognised type specified')
 
@@ -481,7 +549,7 @@ class NuageEntityManager(object):
         elif self.parent_type:
             # Checking if parent type exists
             try:
-                self.parent_class = getattr(vsdk, 'NU{0:s}'.format(self.parent_type))
+                self.parent_class = getattr(VSPK, 'NU{0:s}'.format(self.parent_type))
             except AttributeError:
                 # The parent type does not exist, fail
                 self.module.fail_json(msg='Unrecognised parent type specified')
@@ -494,7 +562,7 @@ class NuageEntityManager(object):
             # If there is an id, we do not need a parent because we'll interact directly with the entity
             # If an assign needs to happen, a parent will have to be provided
             # Root object is the parent
-            self.parent_class = vsdk.NUMe
+            self.parent_class = VSPK.NUMe
             fetcher = self.parent_class().fetcher_for_rest_name(self.entity_class.rest_name)
             if fetcher is None:
                 self.module.fail_json(msg='No parent specified and root object is not a parent for the type')
@@ -504,14 +572,10 @@ class NuageEntityManager(object):
             self.module.fail_json(msg='You have to define either a state or a command')
         elif self.state and self.state == 'present' and not self.entity_id and not self.properties:
             self.module.fail_json(msg='In case of present state, an id and/or properties has to be defined')
-        elif self.state and self.state == 'absent' and not self.entity_id and not self.properties and \
-                not self.match_filter:
-            self.module.fail_json(
-                msg='In case of absent state, an id, properties and/or a match_filter has to be defined')
-        elif self.command and self.command == 'change_password' and (
-                not self.entity_id or not self.properties or not self.properties['password']):
-            self.module.fail_json(
-                msg='In case of change_password command, an id and a properties password have to be defined')
+        elif self.state and self.state == 'absent' and not self.entity_id and not self.properties and not self.match_filter:
+            self.module.fail_json(msg='In case of absent state, an id, properties and/or a match_filter has to be defined')
+        elif self.command and self.command == 'change_password' and (not self.entity_id or not self.properties or not self.properties['password']):
+            self.module.fail_json(msg='In case of change_password command, an id and a properties password have to be defined')
         elif self.command and self.command == 'wait_for_job' and not self.entity_id:
             self.module.fail_json(msg='In case of wait_for_job command, an id has to be provided for the job')
 
@@ -534,12 +598,9 @@ class NuageEntityManager(object):
 
         self.entity_fetcher = self.parent.fetcher_for_rest_name(self.entity_class.rest_name)
         if self.entity_fetcher is None and not self.entity_id and not self.module.check_mode:
-            self.module.fail_json(
-                msg=('Unable to find a fetcher for entity, and no ID specified.'
-                     'This is only supported if the root object can be a parent'))
+            self.module.fail_json(msg='Unable to find a fetcher for entity, and no ID specified. This is only supported if the root object can be a parent')
 
-    def _find_entities(self, entity_id=None, entity_class=None, match_filter=None, properties=None,
-                       entity_fetcher=None):
+    def _find_entities(self, entity_id=None, entity_class=None, match_filter=None, properties=None, entity_fetcher=None):
         """
         Will return a set of entities matching a filter or set of properties if the match_filter is unset. If the
         entity_id is set, it will return only the entity matching that ID as the single element of the list.
@@ -637,8 +698,7 @@ class NuageEntityManager(object):
         Handles the Ansible task when the state is set to absent
         """
         # Absent state
-        self.entity = self._find_entity(entity_id=self.entity_id, entity_class=self.entity_class,
-                                        match_filter=self.match_filter, properties=self.properties,
+        self.entity = self._find_entity(entity_id=self.entity_id, entity_class=self.entity_class, match_filter=self.match_filter, properties=self.properties,
                                         entity_fetcher=self.entity_fetcher)
         if self.entity and (self.entity_fetcher is None or self.entity_fetcher.relationship in ['child', 'root']):
             # Entity is present, deleting
@@ -654,16 +714,15 @@ class NuageEntityManager(object):
                 if self.module.check_mode:
                     self.result['changed'] = True
                 else:
-                    self._unassign_member(entity_fetcher=self.entity_fetcher, entity=self.entity,
-                                          entity_class=self.entity_class, parent=self.parent, set_output=True)
+                    self._unassign_member(entity_fetcher=self.entity_fetcher, entity=self.entity, entity_class=self.entity_class, parent=self.parent,
+                                          set_output=True)
 
     def _handle_present(self):
         """
         Handles the Ansible task when the state is set to present
         """
         # Present state
-        self.entity = self._find_entity(entity_id=self.entity_id, entity_class=self.entity_class,
-                                        match_filter=self.match_filter, properties=self.properties,
+        self.entity = self._find_entity(entity_id=self.entity_id, entity_class=self.entity_class, match_filter=self.match_filter, properties=self.properties,
                                         entity_fetcher=self.entity_fetcher)
         # Determining action to take
         if self.entity_fetcher is not None and self.entity_fetcher.relationship == 'member' and not self.entity:
@@ -675,16 +734,14 @@ class NuageEntityManager(object):
                 if self.module.check_mode:
                     self.result['changed'] = True
                 else:
-                    self._assign_member(entity_fetcher=self.entity_fetcher, entity=self.entity,
-                                        entity_class=self.entity_class, parent=self.parent, set_output=True)
-        elif self.entity_fetcher is not None and self.entity_fetcher.relationship in ['child',
-                                                                                      'root'] and not self.entity:
+                    self._assign_member(entity_fetcher=self.entity_fetcher, entity=self.entity, entity_class=self.entity_class, parent=self.parent,
+                                        set_output=True)
+        elif self.entity_fetcher is not None and self.entity_fetcher.relationship in ['child', 'root'] and not self.entity:
             # Entity is not present as a child, creating
             if self.module.check_mode:
                 self.result['changed'] = True
             else:
-                self.entity = self._create_entity(entity_class=self.entity_class, parent=self.parent,
-                                                  properties=self.properties)
+                self.entity = self._create_entity(entity_class=self.entity_class, parent=self.parent, properties=self.properties)
                 self.result['id'] = self.entity.id
                 self.result['entities'].append(self.entity.to_dict())
 
@@ -718,7 +775,7 @@ class NuageEntityManager(object):
         Handles the Ansible task when the command is to get the csp enterprise
         """
         self.entity_id = self.parent.enterprise_id
-        self.entity = vsdk.NUEnterprise(id=self.entity_id)
+        self.entity = VSPK.NUEnterprise(id=self.entity_id)
         try:
             self.entity.fetch()
         except BambouHTTPError, error:
@@ -731,8 +788,7 @@ class NuageEntityManager(object):
         Handles the Ansible task when the command is to wait for a job
         """
         # Command wait_for_job
-        self.entity = self._find_entity(entity_id=self.entity_id, entity_class=self.entity_class,
-                                        match_filter=self.match_filter, properties=self.properties,
+        self.entity = self._find_entity(entity_id=self.entity_id, entity_class=self.entity_class, match_filter=self.match_filter, properties=self.properties,
                                         entity_fetcher=self.entity_fetcher)
         if self.module.check_mode:
             self.result['changed'] = True
@@ -746,8 +802,7 @@ class NuageEntityManager(object):
         Handles the Ansible task when the command is to change a password
         """
         # Command change_password
-        self.entity = self._find_entity(entity_id=self.entity_id, entity_class=self.entity_class,
-                                        match_filter=self.match_filter, properties=self.properties,
+        self.entity = self._find_entity(entity_id=self.entity_id, entity_class=self.entity_class, match_filter=self.match_filter, properties=self.properties,
                                         entity_fetcher=self.entity_fetcher)
         if self.module.check_mode:
             self.result['changed'] = True
@@ -773,8 +828,7 @@ class NuageEntityManager(object):
         Handles the Ansible task when the command is to find an entity
         """
         # Command find
-        entities = self._find_entities(entity_id=self.entity_id, entity_class=self.entity_class,
-                                       match_filter=self.match_filter, properties=self.properties,
+        entities = self._find_entities(entity_id=self.entity_id, entity_class=self.entity_class, match_filter=self.match_filter, properties=self.properties,
                                        entity_fetcher=self.entity_fetcher)
         self.result['changed'] = False
         if entities:
@@ -809,7 +863,7 @@ class NuageEntityManager(object):
         # Checking if type exists
         entity_class = None
         try:
-            entity_class = getattr(vsdk, 'NU{0:s}'.format(child['type']))
+            entity_class = getattr(VSPK, 'NU{0:s}'.format(child['type']))
         except AttributeError:
             self.module.fail_json(msg='Unrecognised child type specified')
 
@@ -818,8 +872,8 @@ class NuageEntityManager(object):
             self.module.fail_json(msg='Unable to find a fetcher for child, and no ID specified.')
 
         # Try and find the child
-        entity = self._find_entity(entity_id=child_id, entity_class=entity_class, match_filter=child_filter,
-                                   properties=child_properties, entity_fetcher=entity_fetcher)
+        entity = self._find_entity(entity_id=child_id, entity_class=entity_class, match_filter=child_filter, properties=child_properties,
+                                   entity_fetcher=entity_fetcher)
 
         # Determining action to take
         if entity_fetcher.relationship == 'member' and not entity:
@@ -831,8 +885,7 @@ class NuageEntityManager(object):
                 if self.module.check_mode:
                     self.result['changed'] = True
                 else:
-                    self._assign_member(entity_fetcher=entity_fetcher, entity=entity, entity_class=entity_class,
-                                        parent=parent, set_output=False)
+                    self._assign_member(entity_fetcher=entity_fetcher, entity=entity, entity_class=entity_class, parent=parent, set_output=False)
         elif entity_fetcher.relationship in ['child', 'root'] and not entity:
             # Entity is not present as a child, creating
             if self.module.check_mode:
@@ -873,8 +926,7 @@ class NuageEntityManager(object):
                 try:
                     entity_value = getattr(entity, property_name)
                 except AttributeError:
-                    self.module.fail_json(
-                        msg='Property {0:s} is not valid for this type of entity'.format(property_name))
+                    self.module.fail_json(msg='Property {0:s} is not valid for this type of entity'.format(property_name))
 
                 if entity_value != properties[property_name]:
                     # Difference in values changing property
@@ -882,9 +934,7 @@ class NuageEntityManager(object):
                     try:
                         setattr(entity, property_name, properties[property_name])
                     except AttributeError:
-                        self.module.fail_json(
-                            msg='Property {0:s} can not be changed for this type of entity'.format(
-                                property_name))
+                        self.module.fail_json(msg='Property {0:s} can not be changed for this type of entity'.format(property_name))
         return changed
 
     def _is_member(self, entity_fetcher, entity):
@@ -1026,8 +1076,8 @@ def main():
         supports_check_mode=True
     )
 
-    if not HASVSPK:
-        module.fail_json(msg='vspk is required for this module')
+    if not HASBAMBOU:
+        module.fail_json(msg='bambou is required for this module')
 
     entity_manager = NuageEntityManager(module)
     entity_manager.handle_main_entity()
