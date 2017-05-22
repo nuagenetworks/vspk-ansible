@@ -27,7 +27,7 @@ module: nuage_vspk
 short_description: Manage Nuage VSP environments
 description:
     - Manage or find Nuage VSP entities, this includes create, update, delete, assign, unassign and find, with all supported properties.
-version_added: "2.3"
+version_added: "2.4"
 author: Philippe Dellaert (@pdellaert)
 options:
     auth:
@@ -401,6 +401,7 @@ entities:
 
 import time
 import importlib
+from ansible.module_utils.basic import AnsibleModule
 
 try:
     from bambou.exceptions import BambouHTTPError
@@ -1055,8 +1056,6 @@ class NuageEntityManager(object):
         self.result['entities'].append(entity.to_dict())
         if entity.status == 'ERROR':
             self.module.fail_json(msg='Job ended in an error')
-
-from ansible.module_utils.basic import AnsibleModule
 
 
 def main():
