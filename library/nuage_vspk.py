@@ -19,7 +19,7 @@
 
 ANSIBLE_METADATA = {'status': ['preview'],
                     'supported_by': 'community',
-                    'version': '1.0'}
+                    'metadata_version': '1.0'}
 
 DOCUMENTATION = '''
 ---
@@ -27,7 +27,7 @@ module: nuage_vspk
 short_description: Manage Nuage VSP environments
 description:
     - Manage or find Nuage VSP entities, this includes create, update, delete, assign, unassign and find, with all supported properties.
-version_added: "2.2"
+version_added: "2.3"
 author: Philippe Dellaert (@pdellaert)
 options:
     auth:
@@ -145,14 +145,14 @@ options:
     children:
         description:
             - Can be used to specify a set of child entities.
-            - Mandatory properties of each child: I(type).
+            - A mandatory property of each child is the I(type).
             - Supported optional properties of each child are I(id), I(properties) and I(match_filter).
             - The function of each of these properties is the same as in the general task definition.
             - This can be used recursively
             - Only useable in case I(state=present).
         required: false
         choices: []
-        aliaces: []
+        aliases: []
         version_added: "1.0"
 notes:
     - Check mode is supported, but with some caveats. It will not do any changes, and if possible try to determine if it is able do what is requested.
