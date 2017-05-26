@@ -1034,10 +1034,10 @@ def main():
             ['command', 'state']
         ],
         required_if=[
-            ('state', 'present', ['id', 'properties', 'match_filter'], True),
-            ('state', 'absent', ['id', 'properties', 'match_filter'], True),
-            ('command', 'change_password', ['id', 'properties']),
-            ('command', 'wait_for_job', ['id'])
+            ['state', 'present', ['id', 'properties', 'match_filter'], True],
+            ['state', 'absent', ['id', 'properties', 'match_filter'], True],
+            ['command', 'change_password', ['id', 'properties']],
+            ['command', 'wait_for_job', ['id']]
         ],
         supports_check_mode=True
     )

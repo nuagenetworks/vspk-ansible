@@ -8,7 +8,7 @@
       api_password: csproot
       api_enterprise: csp
       api_url: https://localhost:8443
-      api_version: v4_0
+      api_version: v5_0
     cert_path: /path/to/username.pem
     key_path: /path/to/username-Key.pem
 
