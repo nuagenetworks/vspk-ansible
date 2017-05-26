@@ -515,7 +515,7 @@ class NuageEntityManager(object):
             if fetcher is None:
                 self.module.fail_json(msg='No parent specified and root object is not a parent for the type')
 
-        # Verifying state or command is set:
+        # Verifying if a password is provided in case of the change_password command:
         if self.command and self.command == 'change_password' and 'password' not in self.properties.keys():
             self.module.fail_json(msg='command is change_password but the following are missing: password property')
 
