@@ -1,0 +1,190 @@
+- name: Checking auth - missing username
+  connection: local
+  nuage_vspk:
+    auth: 
+      api_password: csproot
+      api_enterprise: csp
+      api_url: https://localhost:8443
+      api_version: v4_0
+    type: Job
+    id: dumy-job-uuid
+    command: wait_for_job
+  ignore_errors: yes
+
+- name: Checking auth - missing password and cert info
+  connection: local
+  nuage_vspk:
+    auth: 
+      api_username: csproot
+      api_enterprise: csp
+      api_url: https://localhost:8443
+      api_version: v4_0
+    type: Job
+    id: dumy-job-uuid
+    command: wait_for_job
+  ignore_errors: yes
+
+- name: Checking auth - missing enterprise
+  connection: local
+  nuage_vspk:
+    auth: 
+      api_username: csproot
+      api_password: csproot
+      api_url: https://localhost:8443
+      api_version: v4_0
+    type: Job
+    id: dumy-job-uuid
+    command: wait_for_job
+  ignore_errors: yes
+
+- name: Checking auth - missing url
+  connection: local
+  nuage_vspk:
+    auth: 
+      api_username: csproot
+      api_password: csproot
+      api_enterprise: csp
+      api_version: v4_0
+    type: Job
+    id: dumy-job-uuid
+    command: wait_for_job
+  ignore_errors: yes
+
+- name: Checking auth - missing version
+  connection: local
+  nuage_vspk:
+    auth: 
+      api_username: csproot
+      api_password: csproot
+      api_enterprise: csp
+      api_url: https://localhost:8443
+    type: Job
+    id: dumy-job-uuid
+    command: wait_for_job
+  ignore_errors: yes
+
+- name: Checking auth - missing certificate 
+  connection: local
+  nuage_vspk:
+    auth: 
+      api_username: csproot
+      api_enterprise: csp
+      api_url: https://localhost:8443
+      api_version: v4_0
+      api_key: "{{ key_path }}"
+    type: Job
+    id: dumy-job-uuid
+    command: wait_for_job
+  ignore_errors: yes
+
+- name: Checking auth - missing key
+  connection: local
+  nuage_vspk:
+    auth: 
+      api_username: csproot
+      api_enterprise: csp
+      api_url: https://localhost:8443
+      api_version: v4_0
+      api_certificate: "{{ cert_path }}"
+    type: Job
+    id: dumy-job-uuid
+    command: wait_for_job
+  ignore_errors: yes
+
+- name: Checking mutually exclusive
+  connection: local
+  nuage_vspk:
+    auth: "{{ valid_auth }}"
+    type: Enterprise
+    state: present
+    command: find
+    properties:
+      name: "Ansible-basic"
+  ignore_errors: yes
+
+- name: Checking required together - parent_id
+  connection: local
+  nuage_vspk:
+    auth: "{{ valid_auth }}"
+    type: Group
+    parent_type: Enterprise
+    command: find
+    properties:
+      name: "Administrators"
+  ignore_errors: yes
+
+- name: Checking required together - parent_type
+  connection: local
+  nuage_vspk:
+    auth: "{{ valid_auth }}"
+    type: Group
+    parent_id: "test-enterprise-uuid"
+    command: find
+    properties:
+      name: "Administrators"
+  ignore_errors: yes
+
+- name: Checking required on of
+  connection: local
+  nuage_vspk:
+    auth: "{{ valid_auth }}"
+    type: Enterprise
+    state: present
+    command: find
+    properties:
+      name: "Ansible-basic"
+  ignore_errors: yes
+
+- name: Checking required if - state present
+  connection: local
+  nuage_vspk:
+    auth: "{{ valid_auth }}"
+    type: Enterprise
+    state: present
+  ignore_errors: yes
+
+- name: Checking required if - state absent
+  connection: local
+  nuage_vspk:
+    auth: "{{ valid_auth }}"
+    type: Enterprise
+    state: absent
+  ignore_errors: yes
+
+- name: Checking required if - command change_password id
+  connection: local
+  nuage_vspk:
+    auth: "{{ valid_auth }}"
+    type: User
+    command: change_password
+    properties:
+      password: "ansible-new-password"
+  ignore_errors: yes
+
+- name: Checking required if - command change_password properties
+  connection: local
+  nuage_vspk:
+    auth: "{{ valid_auth }}"
+    type: User
+    id: "user-uuid"
+    command: change_password
+  ignore_errors: yes
+
+- name: Checking required if - command change_password properties password
+  connection: local
+  nuage_vspk:
+    auth: "{{ valid_auth }}"
+    type: User
+    id: "user-uuid"
+    command: change_password
+    properties:
+      new_password: "ansible-new-password"
+  ignore_errors: yes
+
+- name: Checking required if - command wait_for_job id
+  connection: local
+  nuage_vspk:
+    auth: "{{ valid_auth }}"
+    type: Job
+    command: wait_for_job
+  ignore_errors: yes

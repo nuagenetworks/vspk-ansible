@@ -1,0 +1,14 @@
+- hosts: localhost
+  roles:
+  - nuage-vspk-negative-tests
+
+  vars:
+    valid_auth:
+      api_username: csproot
+      api_password: csproot
+      api_enterprise: csp
+      api_url: https://localhost:8443
+      api_version: v4_0
+    cert_path: /path/to/username.pem
+    key_path: /path/to/username-Key.pem
+

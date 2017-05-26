@@ -41,9 +41,6 @@ options:
             - Requires a I(api_version) parameter (example v4_0).
         required: true
         default: null
-        choices: []
-        aliases: []
-        version_added: "1.0"
     type:
         description:
             - The type of entity you want to work on (example Enterprise).
@@ -51,9 +48,6 @@ options:
             - This Class name can be found on U(https://nuagenetworks.github.io/vspkdoc/html/index.html).
         required: true
         default: null
-        choices: []
-        aliases: []
-        version_added: "1.0"
     id:
         description:
             - The ID of the entity you want to work on.
@@ -62,9 +56,6 @@ options:
             - Will take precedence over I(match_filter) and I(properties) whenever an entity needs to be found.
         required: false
         default: null
-        choices: []
-        aliases: []
-        version_added: "1.0"
     parent_id:
         description:
             - The ID of the parent of the entity you want to work on.
@@ -73,9 +64,6 @@ options:
             - If specified, I(parent_type) also needs to be specified.
         required: false
         default: null
-        choices: []
-        aliases: []
-        version_added: "1.0"
     parent_type:
         description:
             - The type of parent the ID is specified for (example Enterprise).
@@ -84,9 +72,6 @@ options:
             - If specified, I(parent_id) also needs to be specified.
         required: false
         default: null
-        choices: []
-        aliases: []
-        version_added: "1.0"
     state:
         description:
             - Specifies the desired state of the entity.
@@ -99,8 +84,6 @@ options:
         choices:
             - present
             - absent
-        aliases: []
-        version_added: "1.0"
     command:
         description:
             - Specifies a command to be executed.
@@ -122,26 +105,18 @@ options:
             - change_password
             - wait_for_job
             - get_csp_enterprise
-        aliases: []
-        version_added: "1.0"
     match_filter:
         description:
             - A filter used when looking (both in I(command) and I(state) for entities, in the format the Nuage VSP API expects.
             - If I(match_filter) is defined, it will take precedence over the I(properties), but not on the I(id)
         required: false
         default: null
-        choices: []
-        aliases: []
-        version_added: "1.0"
     properties:
         description:
             - Properties are the key, value pairs of the different properties an entity has.
             - If no I(id) and no I(match_filter) is specified, these are used to find or determine if the entity exists.
         required: false
         default: null
-        choices: []
-        aliases: []
-        version_added: "1.0"
     children:
         description:
             - Can be used to specify a set of child entities.
@@ -151,9 +126,7 @@ options:
             - This can be used recursively
             - Only useable in case I(state=present).
         required: false
-        choices: []
-        aliases: []
-        version_added: "1.0"
+        default: null
 notes:
     - Check mode is supported, but with some caveats. It will not do any changes, and if possible try to determine if it is able do what is requested.
     - In case a parent id is provided from a previous task, it might be empty and if a search is possible on root, it will do so, which can impact performance.
@@ -430,37 +403,14 @@ class NuageEntityManager(object):
         self.api_key = None
         self.type = module.params['type']
 
-        self.state = None
-        if 'state' in list(module.params.keys()):
-            self.state = module.params['state']
-
-        self.command = None
-        if 'command' in list(module.params.keys()):
-            self.command = module.params['command']
-
-        self.match_filter = None
-        if 'match_filter' in list(module.params.keys()):
-            self.match_filter = module.params['match_filter']
-
-        self.entity_id = None
-        if 'id' in list(module.params.keys()):
-            self.entity_id = module.params['id']
-
-        self.parent_id = None
-        if 'parent_id' in list(module.params.keys()):
-            self.parent_id = module.params['parent_id']
-
-        self.parent_type = None
-        if 'parent_type' in list(module.params.keys()):
-            self.parent_type = module.params['parent_type']
-
-        self.properties = None
-        if 'properties' in list(module.params.keys()):
-            self.properties = module.params['properties']
-
-        self.children = None
-        if 'children' in list(module.params.keys()):
-            self.children = module.params['children']
+        self.state = module.params['state']
+        self.command = module.params['command']
+        self.match_filter = module.params['match_filter']
+        self.entity_id = module.params['id']
+        self.parent_id = module.params['parent_id']
+        self.parent_type = module.params['parent_type']
+        self.properties = module.params['properties']
+        self.children = module.params['children']
 
         self.entity = None
         self.entity_class = None
@@ -544,13 +494,7 @@ class NuageEntityManager(object):
         if self.module.check_mode:
             return
 
-        if self.parent_id and not self.parent_type:
-            # Checking if parent info is ok
-            self.module.fail_json(msg='Parent ID specified, but no parent type specified')
-        elif self.parent_type and not self.parent_id:
-            # Checking if parent info is ok
-            self.module.fail_json(msg='Parent type specified, but no parent id specified')
-        elif self.parent_type:
+        if self.parent_type:
             # Checking if parent type exists
             try:
                 self.parent_class = getattr(VSPK, 'NU{0:s}'.format(self.parent_type))
@@ -572,16 +516,8 @@ class NuageEntityManager(object):
                 self.module.fail_json(msg='No parent specified and root object is not a parent for the type')
 
         # Verifying state or command is set:
-        if not self.command and not self.state:
-            self.module.fail_json(msg='You have to define either a state or a command')
-        elif self.state and self.state == 'present' and not self.entity_id and not self.properties:
-            self.module.fail_json(msg='In case of present state, an id and/or properties has to be defined')
-        elif self.state and self.state == 'absent' and not self.entity_id and not self.properties and not self.match_filter:
-            self.module.fail_json(msg='In case of absent state, an id, properties and/or a match_filter has to be defined')
-        elif self.command and self.command == 'change_password' and (not self.entity_id or not self.properties or not self.properties['password']):
-            self.module.fail_json(msg='In case of change_password command, an id and a properties password have to be defined')
-        elif self.command and self.command == 'wait_for_job' and not self.entity_id:
-            self.module.fail_json(msg='In case of wait_for_job command, an id has to be provided for the job')
+        if self.command and self.command == 'change_password' and 'password' not in self.properties.keys():
+            self.module.fail_json(msg='command is change_password but the following are missing: password property')
 
     def _find_parent(self):
         """
@@ -1064,7 +1000,20 @@ def main():
     """
     module = AnsibleModule(
         argument_spec=dict(
-            auth=dict(required=True, type='dict', no_log=True),
+            auth=dict(
+                required=True,
+                type='dict',
+                no_log=True,
+                options=dict(
+                    api_username=dict(required=True, type='str'),
+                    api_enterprise=dict(required=True, type='str'),
+                    api_url=dict(required=True, type='str'),
+                    api_version=dict(required=True, type='str'),
+                    api_password=dict(default=None, required=False, type='str'),
+                    api_certificate=dict(default=None, required=False, type='str'),
+                    api_key=dict(default=None, required=False, type='str')
+                )
+            ),
             type=dict(required=True, type='str'),
             id=dict(default=None, required=False, type='str'),
             parent_id=dict(default=None, required=False, type='str'),
@@ -1075,6 +1024,21 @@ def main():
             properties=dict(default=None, required=False, type='dict'),
             children=dict(default=None, required=False, type='list')
         ),
+        mutually_exclusive=[
+            ['command', 'state']
+        ],
+        required_together=[
+            ['parent_id', 'parent_type']
+        ],
+        required_one_of=[
+            ['command', 'state']
+        ],
+        required_if=[
+            ('state', 'present', ['id', 'properties', 'match_filter'], True),
+            ('state', 'absent', ['id', 'properties', 'match_filter'], True),
+            ('command', 'change_password', ['id', 'properties']),
+            ('command', 'wait_for_job', ['id'])
+        ],
         supports_check_mode=True
     )
 
