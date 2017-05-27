@@ -451,18 +451,10 @@ class NuageEntityManager(object):
         Verifies the API and loads the proper VSPK version
         """
         # Checking auth parameters
-        if 'api_username' not in list(self.auth.keys()) or not self.auth['api_username']:
-            self.module.fail_json(msg='Missing api_username parameter in auth')
         if ('api_password' not in list(self.auth.keys()) or not self.auth['api_password']) and ('api_certificate' not in list(self.auth.keys()) or
                                                                                                 'api_key' not in list(self.auth.keys()) or
                                                                                                 not self.auth['api_certificate'] or not self.auth['api_key']):
             self.module.fail_json(msg='Missing api_password or api_certificate and api_key parameter in auth')
-        if 'api_enterprise' not in list(self.auth.keys()) or not self.auth['api_enterprise']:
-            self.module.fail_json(msg='Missing api_enterprise parameter in auth')
-        if 'api_url' not in list(self.auth.keys()) or not self.auth['api_url']:
-            self.module.fail_json(msg='Missing api_url parameter in auth')
-        if 'api_version' not in list(self.auth.keys()) or not self.auth['api_version']:
-            self.module.fail_json(msg='Missing api_version parameter in auth')
 
         self.api_username = self.auth['api_username']
         if 'api_password' in list(self.auth.keys()) and self.auth['api_password']:
@@ -1003,15 +995,14 @@ def main():
             auth=dict(
                 required=True,
                 type='dict',
-                no_log=True,
                 options=dict(
                     api_username=dict(required=True, type='str'),
                     api_enterprise=dict(required=True, type='str'),
                     api_url=dict(required=True, type='str'),
                     api_version=dict(required=True, type='str'),
-                    api_password=dict(default=None, required=False, type='str'),
-                    api_certificate=dict(default=None, required=False, type='str'),
-                    api_key=dict(default=None, required=False, type='str')
+                    api_password=dict(default=None, required=False, type='str', no_log=True),
+                    api_certificate=dict(default=None, required=False, type='str', no_log=True),
+                    api_key=dict(default=None, required=False, type='str', no_log=True)
                 )
             ),
             type=dict(required=True, type='str'),
