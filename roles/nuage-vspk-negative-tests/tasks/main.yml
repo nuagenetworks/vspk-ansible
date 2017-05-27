@@ -5,7 +5,7 @@
       api_password: csproot
       api_enterprise: csp
       api_url: https://localhost:8443
-      api_version: v4_0
+      api_version: v5_0
     type: Job
     id: dumy-job-uuid
     command: wait_for_job
@@ -18,7 +18,7 @@
       api_username: csproot
       api_enterprise: csp
       api_url: https://localhost:8443
-      api_version: v4_0
+      api_version: v5_0
     type: Job
     id: dumy-job-uuid
     command: wait_for_job
@@ -31,7 +31,7 @@
       api_username: csproot
       api_password: csproot
       api_url: https://localhost:8443
-      api_version: v4_0
+      api_version: v5_0
     type: Job
     id: dumy-job-uuid
     command: wait_for_job
@@ -44,7 +44,7 @@
       api_username: csproot
       api_password: csproot
       api_enterprise: csp
-      api_version: v4_0
+      api_version: v5_0
     type: Job
     id: dumy-job-uuid
     command: wait_for_job
@@ -70,7 +70,7 @@
       api_username: csproot
       api_enterprise: csp
       api_url: https://localhost:8443
-      api_version: v4_0
+      api_version: v5_0
       api_key: "{{ key_path }}"
     type: Job
     id: dumy-job-uuid
@@ -84,7 +84,7 @@
       api_username: csproot
       api_enterprise: csp
       api_url: https://localhost:8443
-      api_version: v4_0
+      api_version: v5_0
       api_certificate: "{{ cert_path }}"
     type: Job
     id: dumy-job-uuid
