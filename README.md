@@ -42,11 +42,12 @@ This module is in active development and in **beta** stage. As such, this module
 * Nuage 4.0R5 and VSPK-Python 4.0.5
 * Nuage 4.0R7 and VSPK-Python 4.0.7
 * Nuage 4.0R8 and VSPK-Python 4.0.8
+* Nuage 5.0.1 and VSPK-Python 5.0.1
 * [NuageX](https://nuagex.io) (Nuage 4.0R5 and VSPK-Python 4.0.5)
-* Ansible 2.2
+* Ansible 2.3
 
 ## Requirements
-* Ansible 2
+* Ansible 2.3
 * VSPK-Python matching your Nuage VSP environment
-* Nuage VSP 4.0Rx
+* Nuage VSP 4.0Rx, 5.x.x
 
