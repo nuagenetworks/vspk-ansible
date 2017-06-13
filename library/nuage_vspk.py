@@ -529,8 +529,6 @@ class NuageEntityManager(object):
                 self.module.fail_json(msg='Failed to fetch the specified parent: {0}'.format(error))
 
         self.entity_fetcher = self.parent.fetcher_for_rest_name(self.entity_class.rest_name)
-        if self.entity_fetcher is None and not self.entity_id and not self.module.check_mode:
-            self.module.fail_json(msg='Unable to find a fetcher for entity, and no ID specified. This is only supported if the root object can be a parent')
 
     def _find_entities(self, entity_id=None, entity_class=None, match_filter=None, properties=None, entity_fetcher=None):
         """
@@ -724,8 +722,6 @@ class NuageEntityManager(object):
                                         entity_fetcher=self.entity_fetcher)
         if self.module.check_mode:
             self.result['changed'] = True
-        elif not self.entity:
-            self.module.fail_json(msg='Unable to find entity')
         else:
             self._wait_for_job(self.entity)
 
@@ -738,8 +734,6 @@ class NuageEntityManager(object):
                                         entity_fetcher=self.entity_fetcher)
         if self.module.check_mode:
             self.result['changed'] = True
-        elif not self.entity:
-            self.module.fail_json(msg='Unable to find entity')
         else:
             try:
                 getattr(self.entity, 'password')
