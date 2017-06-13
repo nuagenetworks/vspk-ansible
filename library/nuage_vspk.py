@@ -658,7 +658,7 @@ class NuageEntityManager(object):
                                         entity_fetcher=self.entity_fetcher)
         # Determining action to take
         if self.entity_fetcher is not None and self.entity_fetcher.relationship == 'member' and not self.entity:
-            self.module.fail_json('Trying to assign an entity that does not exist')
+            self.module.fail_json(msg='Trying to assign an entity that does not exist')
         elif self.entity_fetcher is not None and self.entity_fetcher.relationship == 'member' and self.entity:
             # Entity is a member, need to check if already present
             if not self._is_member(entity_fetcher=self.entity_fetcher, entity=self.entity):
@@ -809,7 +809,7 @@ class NuageEntityManager(object):
 
         # Determining action to take
         if entity_fetcher.relationship == 'member' and not entity:
-            self.module.fail_json('Trying to assign a child that does not exist')
+            self.module.fail_json(msg='Trying to assign a child that does not exist')
         elif entity_fetcher.relationship == 'member' and entity:
             # Entity is a member, need to check if already present
             if not self._is_member(entity_fetcher=entity_fetcher, entity=entity):
