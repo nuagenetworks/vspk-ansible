@@ -18,20 +18,20 @@ The nuage_vspk module for Ansible allows you to manage or find Nuage VSP entitie
 
 More details on the [Wiki](https://github.com/nuagenetworks/vspk-ansible/wiki)
 
-# # Trying the module
+## Trying the module
 1. Clone this repository onto a machine with Ansible and VSPK-Python installed, which has access to your VSD.
 2. Adapt the `nuage-vspk-tests.yml` file to reflect your environment and the roles you want to execute
 3. From within the repository folder, execute `ansible-playbook nuage-vspk-tests.yml`
 
 ## Special considerations
-* `type` and `parent_type` are the CamelCase values of the classes in the Python VSPK (without the `NU` part). Example, a domain template should be mentioned as `DomainTemplate`, as can seen in the [Domain Template VSPK doc](https://nuagenetworks.github.io/vspkdoc/html/v4_0/nudomaintemplate.html): `nudomaintemplate.NU`**`DomainTemplate`**`(bambou.nurest_object.NUMetaRESTObject,)`.
-* `properties` should be represented by there lowercase-underscore names, as documented in the [Nuage Python VSPK docs](https://nuagenetworks.github.io/vspkdoc/html/index.html).
+* `type` and `parent_type` are the CamelCase values of the classes in the Python VSPK (without the `NU` part). Example, a domain template should be mentioned as `DomainTemplate`, as can seen in the [Domain Template VSPK doc](https://nuagenetworks.github.io/vspkdoc/v6/nudomaintemplate.html): `nudomaintemplate.NU`**`DomainTemplate`**`(bambou.nurest_object.NUMetaRESTObject,)`.
+* `properties` should be represented by there lowercase-underscore names, as documented in the [Nuage Python VSPK docs](https://nuagenetworks.github.io/vspkdoc/index.html).
 * `match_filter` is used as a way of finding a specific entiy (if no `id` is specified), if this is omitted, a filter is build based on all `properties`, which in most cases will fail. 
-* For the `match_filter`, the filter should use the camelCase names of the properties as in the [Nuage API docs](https://nuagenetworks.github.io/vsd-api-documentation/v4_0/), for instance: `name == 'Allow all policy' and policyState == 'DRAFT'`.
+* For the `match_filter`, the filter should use the camelCase names of the properties as in the [Nuage API docs](https://nuagenetworks.github.io/vsd-api-documentation/v6/), for instance: `name == 'Allow all policy' and policyState == 'DRAFT'`.
 
 ### Useful links
-* [Nuage Python VSPK docs](https://nuagenetworks.github.io/vspkdoc/html/index.html)
-* [Nuage API docs](https://nuagenetworks.github.io/vsd-api-documentation/v4_0/)
+* [Nuage Python VSPK docs](https://nuagenetworks.github.io/vspkdoc/index.html)
+* [Nuage API docs](https://nuagenetworks.github.io/vsd-api-documentation/)
 
 ## Examples
 The roles folder holds two roles that serve as examples. The basic role will show each functionality available for the module, creating, updating, assigning, unassigning and deleting entities.
