@@ -1,6 +1,9 @@
 # VSPK-Ansible
 
-## Overview
+## Archive notice
+This repository has been archived in favor of using the upstream Ansible repository where this nuage_vspk module is available as a standard module available in every Ansible release.
+
+ ## Overview
 The nuage_vspk module for Ansible allows you to manage or find Nuage VSP entities, including:
 
 * Create
@@ -15,7 +18,7 @@ The nuage_vspk module for Ansible allows you to manage or find Nuage VSP entitie
 
 More details on the [Wiki](https://github.com/nuagenetworks/vspk-ansible/wiki)
 
-## Trying the module
+# # Trying the module
 1. Clone this repository onto a machine with Ansible and VSPK-Python installed, which has access to your VSD.
 2. Adapt the `nuage-vspk-tests.yml` file to reflect your environment and the roles you want to execute
 3. From within the repository folder, execute `ansible-playbook nuage-vspk-tests.yml`
@@ -42,12 +45,13 @@ This module is in active development and in **beta** stage. As such, this module
 * Nuage 4.0R5 and VSPK-Python 4.0.5
 * Nuage 4.0R7 and VSPK-Python 4.0.7
 * Nuage 4.0R8 and VSPK-Python 4.0.8
-* Nuage 5.0.1 and VSPK-Python 5.0.1
+* Nuage 5.* and VSPK-Python 5.*
+* Nuage 6.* and VSPK-Python 6.*
 * [NuageX](https://nuagex.io) (Nuage 4.0R5 and VSPK-Python 4.0.5)
-* Ansible 2.3
+* Ansible 2.3-2.8
 
 ## Requirements
-* Ansible 2.3
+* Ansible 2.3+
 * VSPK-Python matching your Nuage VSP environment
-* Nuage VSP 4.0Rx, 5.x.x
+* Nuage VSP 4.0Rx, 5.*, 6.*
 
